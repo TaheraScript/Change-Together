@@ -20,6 +20,37 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Authentication
+
+The site ships with email/password auth and Google sign-in:
+
+- `/register` — name, email, photo URL (optional), password.
+  Passwords must contain an uppercase letter, a lowercase letter and be at
+  least 6 characters.
+- `/login` — email + password, plus "Continue with Google".
+- `/create-event` — only signed-in volunteers can publish; guests see a
+  sign-in prompt.
+
+Accounts and sessions are stored in the browser (`localStorage`). Passwords
+are salted and hashed with SHA-256 via the Web Crypto API before storage —
+fine for this demo, but swap in a real backend (e.g. Firebase Auth) before
+going to production.
+
+### Google sign-in
+
+The real Google Identity Services flow runs when an OAuth client ID is
+configured:
+
+```bash
+# .env.local
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+```
+
+Create the client ID in the Google Cloud console and add
+`http://localhost:3000` to the authorised JavaScript origins. Without that
+variable the Google button falls back to a demo account so the flow can still
+be tested locally.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

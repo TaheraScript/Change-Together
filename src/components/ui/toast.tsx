@@ -137,19 +137,19 @@ function ToastIcon({ type }: { type: string | undefined }) {
 
   if (type === "success") {
     icon = (
-      <CircleCheckIcon aria-hidden="true" />
+      <CircleCheckIcon className="text-[#16A34A]" aria-hidden="true" />
     )
   }
 
   if (type === "info") {
     icon = (
-      <InfoIcon aria-hidden="true" />
+      <InfoIcon className="text-[#164E63]" aria-hidden="true" />
     )
   }
 
   if (type === "warning") {
     icon = (
-      <TriangleAlertIcon aria-hidden="true" />
+      <TriangleAlertIcon className="text-[#F59E0B]" aria-hidden="true" />
     )
   }
 
@@ -187,8 +187,10 @@ function ToastList() {
       <ToastContent>
         <ToastIcon type={toastItem.type} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <ToastTitle />
-          <ToastDescription />
+          <ToastTitle>{toastItem.title}</ToastTitle>
+          {toastItem.description ? (
+            <ToastDescription>{toastItem.description}</ToastDescription>
+          ) : null}
         </div>
         <ToastAction />
         <ToastClose />

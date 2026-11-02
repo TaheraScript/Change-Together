@@ -4,6 +4,86 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------- Hero entrance animations ---------- */
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-image-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.animate-hero-up {
+  opacity: 0;
+  animation: hero-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-hero-in {
+  opacity: 0;
+  animation: hero-image-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-gallery-item {
+  opacity: 0;
+  animation: hero-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hero-delay-1 {
+  animation-delay: 0.08s;
+}
+.hero-delay-2 {
+  animation-delay: 0.18s;
+}
+.hero-delay-3 {
+  animation-delay: 0.3s;
+}
+.hero-delay-4 {
+  animation-delay: 0.42s;
+}
+.hero-delay-5 {
+  animation-delay: 0.55s;
+}
+
+.animate-hero-float {
+  animation: hero-float 5s ease-in-out 1.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-up,
+  .animate-hero-in,
+  .animate-gallery-item {
+    animation: none;
+    opacity: 1;
+  }
+  .animate-hero-float {
+    animation: none;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
