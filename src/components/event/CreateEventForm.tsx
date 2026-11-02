@@ -139,9 +139,8 @@ export default function CreateEventForm() {
     if (values.location.trim().length < 3) {
       nextErrors.location = "Add a venue or area for the event.";
     }
-    if (!values.thumbnailUrl.trim()) {
-      nextErrors.thumbnailUrl = "Add a thumbnail image URL.";
-    } else if (
+    if (
+      values.thumbnailUrl.trim() &&
       !/^https?:\/\/.+/i.test(values.thumbnailUrl.trim()) &&
       !values.thumbnailUrl.trim().startsWith("/")
     ) {
@@ -493,7 +492,7 @@ export default function CreateEventForm() {
               </p>
             ) : (
               <p id="thumbnail-hint" className="mt-1.5 text-xs text-slate-400">
-                Or pick one of the ready-made photos below.
+                Optional image URL, or pick one of the ready-made photos below.
               </p>
             )}
 

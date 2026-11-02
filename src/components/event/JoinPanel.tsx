@@ -44,29 +44,36 @@ export default function JoinPanel({
   );
   const email = user?.email ?? "";
 
-  const [status, setStatus] = useState<JoinStatus>({
-    joined: false,
-    joinCount: initialJoinCount,
-    joinedAt: null,
-  });
+  // Status fetched from the API, tagged with the email it belongs to
+  const [fetched, setFetched] = useState<{
+    email: string;
+    status: JoinStatus;
+  } | null>(null);
   const [joining, setJoining] = useState(false);
+
+  // Derived during render: logged out, or data from a different user,
+  // falls back to the server-rendered default. No setState in the effect needed.
+  const status: JoinStatus =
+    email && fetched && fetched.email === email
+      ? fetched.status
+      : { joined: false, joinCount: initialJoinCount, joinedAt: null };
 
   // Load this user's join status in the browser (depends on who is logged in)
   useEffect(() => {
-    if (!email) {
-      setStatus({ joined: false, joinCount: initialJoinCount, joinedAt: null });
-      return;
-    }
+    if (!email) return;
 
     let cancelled = false;
 
     getJoinStatus(eventId, email)
       .then((result) => {
         if (cancelled) return;
-        setStatus({
-          joined: result.joined,
-          joinCount: result.joinCount ?? initialJoinCount,
-          joinedAt: result.joinedAt ?? null,
+        setFetched({
+          email,
+          status: {
+            joined: result.joined,
+            joinCount: result.joinCount ?? initialJoinCount,
+            joinedAt: result.joinedAt ?? null,
+          },
         });
       })
       .catch(() => {
@@ -103,10 +110,13 @@ export default function JoinPanel({
         displayName: user.displayName,
         photoURL: user.photoURL,
       });
-      setStatus({
-        joined: true,
-        joinCount: result.joinCount,
-        joinedAt: result.joinedAt,
+      setFetched({
+        email: user.email,
+        status: {
+          joined: true,
+          joinCount: result.joinCount,
+          joinedAt: result.joinedAt,
+        },
       });
       toast.add({
         type: "success",
@@ -117,12 +127,15 @@ export default function JoinPanel({
       if (err instanceof ApiError && err.status === 409) {
         try {
           const refreshed = await getJoinStatus(eventId, user.email);
-          setStatus(refreshed);
+          setFetched({ email: user.email, status: refreshed });
         } catch {
-          setStatus((current) => ({
-            joined: true,
-            joinCount: current.joinCount ?? 0,
-            joinedAt: current.joinedAt ?? null,
+          setFetched((current) => ({
+            email: user.email,
+            status: {
+              joined: true,
+              joinCount: current?.status.joinCount ?? 0,
+              joinedAt: current?.status.joinedAt ?? null,
+            },
           }));
         }
         toast.add({

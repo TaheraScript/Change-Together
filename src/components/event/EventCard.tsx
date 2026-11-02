@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Mail,
   MapPin,
+  RefreshCw,
 } from "lucide-react";
 import {
   formatEventDate,
@@ -23,14 +24,21 @@ type EventCardProps = {
 
 export default function EventCard({ event, joinedAt }: EventCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const TypeIcon = EVENT_TYPE_ICONS[event.type] ?? CalendarDays;
   const eventId = event._id;
   const thumbnail = event.thumbnailUrl?.trim();
+  const hasImage = Boolean(thumbnail) && !imageFailed;
+
+  const handleRetry = () => {
+    setImageFailed(false);
+    setRetryCount((prev) => prev + 1);
+  };
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-green-200 hover:shadow-lg hover:shadow-slate-900/10">
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-        {thumbnail && !imageFailed ? (
+        {hasImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumbnail}
@@ -41,7 +49,18 @@ export default function EventCard({ event, joinedAt }: EventCardProps) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-green-50 via-white to-amber-50 text-[#16A34A]">
-            <TypeIcon size={44} strokeWidth={1.4} />
+            {thumbnail && retryCount < 3 ? (
+              <button
+                type="button"
+                onClick={handleRetry}
+                aria-label="Retry loading image"
+                className="flex h-full w-full items-center justify-center p-4"
+              >
+                <RefreshCw size={34} strokeWidth={1.6} />
+              </button>
+            ) : (
+              <TypeIcon size={44} strokeWidth={1.4} />
+            )}
           </div>
         )}
 

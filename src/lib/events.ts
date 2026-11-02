@@ -139,6 +139,25 @@ export function getMyJoinedEvents(
   );
 }
 
+export function updateEvent(
+  id: string,
+  input: Partial<CreateEventInput>,
+): Promise<EventRecord> {
+  return apiRequest<{ event: EventRecord }>(
+    `/events/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    },
+  ).then((result) => result.event);
+}
+
+export function deleteEvent(id: string): Promise<void> {
+  return apiRequest<void>(`/events/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export function formatEventDate(date: string): string {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;

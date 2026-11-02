@@ -14,6 +14,8 @@ import { EVENT_TYPE_ICONS } from "@/lib/event-icons";
 import EventImage from "./EventImage";
 import JoinPanel from "./JoinPanel";
 
+
+
 function DetailRow({
   icon: Icon,
   label,
