@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import {
   ArrowRightToLine,
+  CalendarCheck,
   CalendarClock,
   LogOut,
   Plus,
@@ -109,6 +110,17 @@ const Navbar = () => {
             <Plus size={17} strokeWidth={2} />
             <span className="hidden md:inline">Create Event</span>
           </Link>
+
+          {user && (
+            <Link
+              href="/joined-events"
+              aria-label="My joined events"
+              className="hidden items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-slate-700 transition hover:bg-green-50 hover:text-green-700 md:flex"
+            >
+              <CalendarCheck size={18} strokeWidth={1.8} />
+              <span className="hidden lg:inline">My Events</span>
+            </Link>
+          )}
 
           {user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">

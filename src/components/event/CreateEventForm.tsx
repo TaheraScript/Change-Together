@@ -27,10 +27,11 @@ import {
   subscribeToUser,
 } from "@/lib/auth";
 import {
+  ApiError,
   EVENT_TYPES,
   addEvent,
   toDateInputValue,
-  type CommunityEvent,
+  type EventRecord,
 } from "@/lib/events";
 
 type FormValues = {
@@ -82,7 +83,7 @@ export default function CreateEventForm() {
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [savedEvent, setSavedEvent] = useState<CommunityEvent | null>(null);
+  const [savedEvent, setSavedEvent] = useState<EventRecord | null>(null);
   const [storageError, setStorageError] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -155,18 +156,10 @@ export default function CreateEventForm() {
     return nextErrors;
   };
 
-  const handleSubmit = async(event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting || savedEvent) return;
 
-    const res = await fetch('http://localhost:3000/create-event',{
-      method:'POST',
-      headers:{
-        'Content-Type': 'application/json'
-      },
-     body: JSON.stringify(values)
-    })
-    const data = await res.json()
-    console.log(data)
     setStorageError("");
 
     const nextErrors = validate();
@@ -192,10 +185,10 @@ export default function CreateEventForm() {
 
     setSubmitting(true);
     try {
-      const created = addEvent({
+      const created = await addEvent({
         title: values.title.trim(),
         description: values.description.trim(),
-        type: values.type as CommunityEvent["type"],
+        type: values.type,
         thumbnailUrl: values.thumbnailUrl.trim(),
         location: values.location.trim(),
         date: values.date,
@@ -206,10 +199,12 @@ export default function CreateEventForm() {
       redirectTimer.current = setTimeout(() => {
         router.push("/upcoming-events?created=1");
       }, 1400);
-    } catch {
+    } catch (error) {
       setSubmitting(false);
       setStorageError(
-        "We couldn't save your event on this device. Please try again.",
+        error instanceof ApiError
+          ? error.message
+          : "We couldn't publish your event. Please check your connection and try again.",
       );
     }
   };
