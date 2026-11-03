@@ -7,15 +7,14 @@ import {
   CalendarDays,
   MapPin,
   Mail,
-  Trash2,
 } from "lucide-react";
 import {
   formatEventDate,
   type EventRecord,
 } from "@/lib/events";
 import { EVENT_TYPE_ICONS } from "@/lib/event-icons";
-import { deleteEvent } from "@/lib/events";
-import { toast } from "@/components/ui/toast";
+import EditEventForm from "./EditEventForm";
+import DeleteEventForm from "./DeleteEventForm";
 
 type ManageEventCardProps = {
   event: EventRecord;
@@ -27,40 +26,10 @@ export default function ManageEventCard({
   onDeleted,
 }: ManageEventCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const TypeIcon = EVENT_TYPE_ICONS[event.type] ?? CalendarDays;
   const eventId = event._id;
   const thumbnail = event.thumbnailUrl?.trim();
   const hasImage = Boolean(thumbnail) && !imageFailed;
-
-  const handleRetry = () => {
-    setImageFailed(false);
-  };
-
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await deleteEvent(eventId);
-      toast.add({
-        type: "success",
-        title: "Event cancelled",
-        description: `“${event.title}” has been removed.`,
-      });
-      setConfirmDelete(false);
-      onDeleted?.();
-    } catch (error) {
-      setDeleting(false);
-      toast.add({
-        type: "error",
-        title: "Couldn't cancel the event",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong. Please try again.",
-      });
-    }
-  };
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-green-200 hover:shadow-lg hover:shadow-slate-900/10">
@@ -123,54 +92,9 @@ export default function ManageEventCard({
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
             </Link>
 
-            <Link
-              href={`/events/${eventId}/edit`}
-              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-green-300 hover:bg-green-50 hover:text-green-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#164E63]/25"
-            >
-              Edit
-            </Link>
+            <EditEventForm event={event} />
 
-            {confirmDelete ? (
-              <div className="mt-2 flex flex-col gap-2">
-                <p className="text-[11px] leading-relaxed text-slate-600">
-                  Cancelling will remove this event for everyone. This can&ops; be
-                  undone.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    onClick={handleDelete}
-                    className="inline-flex h-10 w-1/2 items-center justify-center gap-1.5 rounded-xl bg-red-50 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-100/50 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {deleting ? (
-                      <>Cancelling…</>
-                    ) : (
-                      <>
-                        <Trash2 size={15} />
-                        Cancel Event
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="inline-flex h-10 w-1/2 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#164E63]/25 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    Keep
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-100/50"
-              >
-                <Trash2 size={16} />
-                Cancel
-              </button>
-            )}
+            <DeleteEventForm event={event} onDeleted={onDeleted} />
           </div>
         </div>
       </div>
