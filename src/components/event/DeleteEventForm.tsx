@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { deleteEvent, type EventRecord } from "@/lib/events";
+import type { EventRecord } from "@/lib/events";
 import { toast } from "@/components/ui/toast";
 import { Trash2 } from "lucide-react";
 
@@ -26,42 +27,59 @@ export default function DeleteEventForm({
   event,
   onDeleted,
 }: DeleteEventFormProps) {
+  const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
     setDeleting(true);
+
     try {
-      await deleteEvent(event._id);
+      const res = await fetch(`http://localhost:5000/events/${event._id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message ?? "Delete failed");
+      }
+
       toast.add({
         type: "success",
         title: "Event cancelled",
         description: `“${event.title}” has been removed.`,
       });
-      onDeleted?.();
+
+      if (onDeleted) {
+        onDeleted();
+      } else {
+        router.push("/manage-events");
+        router.refresh();
+      }
     } catch (error) {
-      setDeleting(false);
       toast.add({
         type: "error",
         title: "Couldn't cancel the event",
         description:
           error instanceof Error ? error.message : "Please try again.",
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger>
-        <Button variant="destructive" size="sm">
-          {deleting ? (
-            "Cancelling…"
-          ) : (
-            <>
-              <Trash2 size={14} />
-              Cancel Event
-            </>
-          )}
-        </Button>
+      <AlertDialogTrigger
+        render={<Button variant="destructive" size="sm" disabled={deleting} />}
+      >
+        {deleting ? (
+          "Cancelling…"
+        ) : (
+          <>
+            <Trash2 size={14} />
+            Cancel Event
+          </>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

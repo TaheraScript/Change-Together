@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
 import { CalendarPlus } from "lucide-react";
 import UpcomingEventsList from "@/components/event/UpcomingEventsList";
+import type { EventRecord } from "@/lib/events";
 
 export const metadata: Metadata = {
   title: "Upcoming Events | Change Together",
@@ -10,7 +10,13 @@ export const metadata: Metadata = {
     "Discover community clean-ups, plantation drives and donation events happening soon.",
 };
 
-export default function UpcomingEventsPage() {
+export default async function UpcomingEventsPage() {
+  const res = await fetch("http://localhost:5000/upcoming-events", {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to load events.");
+  const events: EventRecord[] = await res.json();
+
   return (
     <section className="min-h-screen bg-[#FBFAF6] py-12 md:py-16">
       <div className="container mx-auto px-4 md:px-8">
@@ -40,20 +46,7 @@ export default function UpcomingEventsPage() {
           </Link>
         </div>
 
-        <Suspense
-          fallback={
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((index) => (
-                <div
-                  key={index}
-                  className="h-72 animate-pulse rounded-2xl border border-slate-200 bg-white"
-                />
-              ))}
-            </div>
-          }
-        >
-          <UpcomingEventsList />
-        </Suspense>
+        <UpcomingEventsList events={events} />
       </div>
     </section>
   );

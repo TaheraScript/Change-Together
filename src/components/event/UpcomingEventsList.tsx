@@ -29,6 +29,7 @@ type FilterType = EventType | "All";
 
 type UpcomingEventsListProps = {
   compact?: boolean;
+  events?: EventRecord[];
 };
 
 function SkeletonCard() {
@@ -121,8 +122,11 @@ function EmptyState({
 
 export default function UpcomingEventsList({
   compact = false,
+  events: initialEvents,
 }: UpcomingEventsListProps) {
-  const [events, setEvents] = useState<EventRecord[] | null>(null);
+  const [fetchedEvents, setFetchedEvents] = useState<EventRecord[] | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -133,14 +137,27 @@ export default function UpcomingEventsList({
 
   const justCreated = searchParams.get("created") === "1" && !dismissed;
 
+  // Use the events passed from the server when available,
+  // otherwise fall back to the ones fetched in the browser.
+  const events = useMemo(
+    () =>
+      initialEvents
+        ? initialEvents.filter((event) => isUpcoming(event.date))
+        : fetchedEvents,
+    [initialEvents, fetchedEvents],
+  );
+
   useEffect(() => {
+    // Events were provided by the parent, so there is nothing to fetch.
+    if (initialEvents) return;
+
     let cancelled = false;
 
     async function loadEvents() {
       try {
         const data = await getUpcomingEvents();
         if (!cancelled) {
-          setEvents(data.filter((event) => isUpcoming(event.date)));
+          setFetchedEvents(data.filter((event) => isUpcoming(event.date)));
           setError("");
         }
       } catch {
@@ -154,7 +171,7 @@ export default function UpcomingEventsList({
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [initialEvents, reloadKey]);
 
   useEffect(() => {
     if (searchParams.get("created") === "1") {
@@ -196,7 +213,7 @@ export default function UpcomingEventsList({
 
   const retry = () => {
     setError("");
-    setEvents(null);
+    setFetchedEvents(null);
     setReloadKey((key) => key + 1);
   };
 
