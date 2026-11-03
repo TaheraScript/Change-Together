@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import {
-  AuthError,
-  isGoogleOAuthConfigured,
-  loginWithGoogle,
-} from "@/lib/auth";
+import { signIn } from "@/lib/auth-client";
 import { toast } from "@/components/ui/toast";
 
 type GoogleButtonProps = {
@@ -44,29 +40,44 @@ export default function GoogleButton({
 }: GoogleButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const configured = isGoogleOAuthConfigured();
+  const configured = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
   const handleClick = async () => {
     if (loading) return;
     setLoading(true);
 
     try {
-      const { user, demo } = await loginWithGoogle();
-      toast.add({
-        type: "success",
-        title: demo ? "Signed in with Google (demo)" : "Signed in with Google",
-        description: `Welcome, ${user.displayName}!`,
+      const baseURL =
+        process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000";
+      const { data, error } = await signIn.social({
+        provider: "google",
+        callbackURL: `${baseURL}${destination}`,
       });
-      router.push(destination);
-    } catch (error) {
-      if (error instanceof AuthError && error.code === "GOOGLE_CANCELLED") {
-        return;
+
+      if (error) {
+        throw error;
       }
 
-      const message =
-        error instanceof AuthError
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        router.push(destination);
+      }
+    } catch (error) {
+      const rawMessage =
+        error instanceof Error
           ? error.message
-          : "Google sign-in failed. Please try again.";
+          : typeof error === "object" &&
+              error !== null &&
+              "message" in error &&
+              typeof (error as { message?: unknown }).message === "string"
+            ? (error as { message: string }).message
+            : "Google sign-in failed. Please try again.";
+
+      const message = configured
+        ? rawMessage
+        : `${rawMessage} Google OAuth isn't configured yet — add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local and restart the server.`;
+
       toast.add({
         type: "error",
         title: "Google sign-in failed",
@@ -100,7 +111,7 @@ export default function GoogleButton({
           <code className="break-all rounded bg-slate-100 px-1 py-0.5 text-[10px] text-slate-500">
             NEXT_PUBLIC_GOOGLE_CLIENT_ID
           </code>{" "}
-          for live OAuth.
+          (and GOOGLE_CLIENT_SECRET) for live OAuth.
         </p>
       ) : null}
     </div>

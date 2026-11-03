@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CalendarPlus,
@@ -9,11 +9,7 @@ import {
   UserPlus,
   XCircle,
 } from "lucide-react";
-import {
-  getServerUserSnapshot,
-  getUserSnapshot,
-  subscribeToUser,
-} from "@/lib/auth";
+import { useSession } from "@/lib/auth-client";
 import {
   getMyJoinedEvents,
   isUpcoming,
@@ -35,11 +31,14 @@ function CardSkeleton() {
 }
 
 export default function JoinedEventsList() {
-  const user = useSyncExternalStore(
-    subscribeToUser,
-    getUserSnapshot,
-    getServerUserSnapshot,
-  );
+  const { data: session } = useSession();
+  const user = session?.user
+    ? {
+        email: session.user.email,
+        displayName: session.user.name ?? "",
+        photoURL: session.user.image ?? undefined,
+      }
+    : null;
   const email = user?.email ?? "";
 
   const [data, setData] = useState<{

@@ -16,15 +16,10 @@ import {
   TriangleAlert,
   User,
 } from "lucide-react";
-import {
-  AuthError,
-  checkPassword,
-  isPasswordValid,
-  isValidEmail,
-  registerWithEmail,
-} from "@/lib/auth";
+import { signUp } from "@/lib/auth-client";
 import { toast } from "@/components/ui/toast";
-import GoogleButton from "./GoogleButton";
+import { checkPassword, isPasswordValid, isValidEmail } from "@/lib/utils";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 type FormErrors = {
   name?: string;
@@ -117,28 +112,36 @@ export default function RegisterForm() {
     setErrors({});
 
     try {
-      const user = await registerWithEmail({
-        name,
-        email,
-        photoURL,
+      const { data, error } = await signUp.email({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         password,
+        image: photoURL.trim() || undefined,
       });
+
+      if (error) {
+        const message =
+          error.message ?? "Something went wrong. Please try again.";
+        const taken = /exist/i.test(`${error.code ?? ""} ${message}`);
+        setErrors({ [taken ? "email" : "form"]: message });
+        toast.add({
+          type: "error",
+          title: "Couldn't create your account",
+          description: message,
+        });
+        return;
+      }
+
       toast.add({
         type: "success",
         title: "Account created 🎉",
-        description: `Welcome to Change Together, ${user.displayName.split(" ")[0]}. Your next drive is waiting.`,
+        description: `Welcome to Change Together, ${(data?.user?.name ?? name).split(" ")[0]}. Your next drive is waiting.`,
       });
       router.push(destination);
-    } catch (error) {
-      const message =
-        error instanceof AuthError
-          ? error.message
-          : "Something went wrong. Please try again.";
-      const field =
-        error instanceof AuthError && error.code === "EMAIL_TAKEN"
-          ? "email"
-          : "form";
-      setErrors({ [field]: message });
+      router.refresh();
+    } catch {
+      const message = "Something went wrong. Please try again.";
+      setErrors({ form: message });
       toast.add({
         type: "error",
         title: "Couldn't create your account",
@@ -178,7 +181,11 @@ export default function RegisterForm() {
               value={name}
               onChange={(event) => {
                 setName(event.target.value);
-                setErrors((current) => ({ ...current, name: undefined, form: undefined }));
+                setErrors((current) => ({
+                  ...current,
+                  name: undefined,
+                  form: undefined,
+                }));
               }}
               placeholder="Ayesha Rahman"
               autoComplete="name"
@@ -215,12 +222,18 @@ export default function RegisterForm() {
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setErrors((current) => ({ ...current, email: undefined, form: undefined }));
+                setErrors((current) => ({
+                  ...current,
+                  email: undefined,
+                  form: undefined,
+                }));
               }}
               placeholder="you@example.com"
               autoComplete="email"
               aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? "register-email-error" : undefined}
+              aria-describedby={
+                errors.email ? "register-email-error" : undefined
+              }
               disabled={loading}
               className={`${inputBase} ${inputState(Boolean(errors.email))} pr-3.5 disabled:cursor-not-allowed disabled:opacity-70`}
             />
@@ -255,13 +268,19 @@ export default function RegisterForm() {
                 value={photoURL}
                 onChange={(event) => {
                   setPhotoURL(event.target.value);
-                  setErrors((current) => ({ ...current, photoURL: undefined, form: undefined }));
+                  setErrors((current) => ({
+                    ...current,
+                    photoURL: undefined,
+                    form: undefined,
+                  }));
                 }}
                 placeholder="https://images.example.com/me.jpg"
                 autoComplete="photo"
                 aria-invalid={Boolean(errors.photoURL)}
                 aria-describedby={
-                  errors.photoURL ? "register-photo-error" : "register-photo-hint"
+                  errors.photoURL
+                    ? "register-photo-error"
+                    : "register-photo-hint"
                 }
                 disabled={loading}
                 className={`${inputBase} ${inputState(Boolean(errors.photoURL))} pr-3.5 disabled:cursor-not-allowed disabled:opacity-70`}
@@ -277,8 +296,12 @@ export default function RegisterForm() {
               {errors.photoURL}
             </p>
           ) : (
-            <p id="register-photo-hint" className="mt-1.5 text-xs text-slate-400">
-              Paste a link to your photo, or leave it empty to use your initials.
+            <p
+              id="register-photo-hint"
+              className="mt-1.5 text-xs text-slate-400"
+            >
+              Paste a link to your photo, or leave it empty to use your
+              initials.
             </p>
           )}
         </div>
@@ -299,7 +322,11 @@ export default function RegisterForm() {
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
-                setErrors((current) => ({ ...current, password: undefined, form: undefined }));
+                setErrors((current) => ({
+                  ...current,
+                  password: undefined,
+                  form: undefined,
+                }));
               }}
               placeholder="Create a strong password"
               autoComplete="new-password"
@@ -385,17 +412,20 @@ export default function RegisterForm() {
             </>
           )}
         </button>
+
+        <div className="flex items-center gap-3 pt-1">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            or
+          </span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <GoogleButton
+          destination={destination}
+          onError={(message) => setErrors({ form: message })}
+        />
       </form>
-
-      <div className="my-5 flex items-center gap-3">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          or sign up with
-        </span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <GoogleButton destination={destination} />
     </div>
   );
 }

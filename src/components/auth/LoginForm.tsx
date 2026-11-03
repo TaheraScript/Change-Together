@@ -5,6 +5,8 @@ import type { FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
+  CheckCircle2,
+  Circle,
   Eye,
   EyeOff,
   Loader2,
@@ -13,9 +15,11 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
-import { AuthError, isValidEmail, loginWithEmail } from "@/lib/auth";
+import { signIn } from "@/lib/auth-client";
+
 import { toast } from "@/components/ui/toast";
-import GoogleButton from "./GoogleButton";
+import { checkPassword, isPasswordValid, isValidEmail } from "@/lib/utils";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 type FormErrors = {
   email?: string;
@@ -45,6 +49,10 @@ export default function LoginForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
+  // Live password rules: uppercase, lowercase and at least 6 characters.
+  const passwordChecks = checkPassword(password);
+  const rulesMet = passwordChecks.filter((check) => check.met).length;
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loading) return;
@@ -55,13 +63,16 @@ export default function LoginForm() {
     }
     if (!password) {
       nextErrors.password = "Enter your password.";
+    } else if (!isPasswordValid(password)) {
+      nextErrors.password =
+        "Password needs an uppercase letter, a lowercase letter and at least 6 characters.";
     }
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       toast.add({
         type: "error",
-        title: "Check your details",
+        title: nextErrors.password ? "Password too weak" : "Check your details",
         description: Object.values(nextErrors)[0],
       });
       return;
@@ -71,18 +82,33 @@ export default function LoginForm() {
     setErrors({});
 
     try {
-      const user = await loginWithEmail(email, password);
+      const { data, error } = await signIn.email({
+        email: email.trim().toLowerCase(),
+        password,
+        rememberMe: true,
+      });
+
+      if (error) {
+        const message =
+          error.message ?? "Something went wrong. Please try again.";
+        setErrors({ form: message });
+        toast.add({
+          type: "error",
+          title: "Couldn't log you in",
+          description: message,
+        });
+        return;
+      }
+
       toast.add({
         type: "success",
-        title: `Welcome back, ${user.displayName.split(" ")[0]}!`,
+        title: `Welcome back, ${(data?.user?.name ?? "friend").split(" ")[0]}!`,
         description: "You're signed in. Let's make something better today.",
       });
       router.push(destination);
-    } catch (error) {
-      const message =
-        error instanceof AuthError
-          ? error.message
-          : "Something went wrong. Please try again.";
+      router.refresh();
+    } catch {
+      const message = "Something went wrong. Please try again.";
       setErrors({ form: message });
       toast.add({
         type: "error",
@@ -123,7 +149,11 @@ export default function LoginForm() {
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setErrors((current) => ({ ...current, email: undefined, form: undefined }));
+                setErrors((current) => ({
+                  ...current,
+                  email: undefined,
+                  form: undefined,
+                }));
               }}
               placeholder="you@example.com"
               autoComplete="email"
@@ -176,14 +206,16 @@ export default function LoginForm() {
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
-                setErrors((current) => ({ ...current, password: undefined, form: undefined }));
+                setErrors((current) => ({
+                  ...current,
+                  password: undefined,
+                  form: undefined,
+                }));
               }}
               placeholder="Your password"
               autoComplete="current-password"
               aria-invalid={Boolean(errors.password)}
-              aria-describedby={
-                errors.password ? "login-password-error" : undefined
-              }
+              aria-describedby="login-password-rules"
               disabled={loading}
               className={`${inputBase} ${inputState(Boolean(errors.password))} pr-11 disabled:cursor-not-allowed disabled:opacity-70`}
             />
@@ -196,6 +228,49 @@ export default function LoginForm() {
               {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
+          <div
+            id="login-password-rules"
+            className="mt-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex flex-1 gap-1" aria-hidden="true">
+                {[0, 1, 2].map((segment) => (
+                  <span
+                    key={segment}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      rulesMet > segment
+                        ? rulesMet === 3
+                          ? "bg-[#16A34A]"
+                          : "bg-[#F59E0B]"
+                        : "bg-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {rulesMet === 3 ? "Valid" : rulesMet > 0 ? "Almost" : "Required"}
+              </span>
+            </div>
+
+            <ul className="mt-2 grid gap-1">
+              {passwordChecks.map((check) => (
+                <li
+                  key={check.id}
+                  className={`flex items-center gap-1.5 text-xs transition-colors ${
+                    check.met ? "text-green-700" : "text-slate-400"
+                  }`}
+                >
+                  {check.met ? (
+                    <CheckCircle2 size={14} className="shrink-0" />
+                  ) : (
+                    <Circle size={14} className="shrink-0" />
+                  )}
+                  {check.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {errors.password && (
             <p
               id="login-password-error"
@@ -225,21 +300,24 @@ export default function LoginForm() {
           )}
         </button>
 
+        <div className="flex items-center gap-3 pt-1">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            or
+          </span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <GoogleButton
+          destination={destination}
+          onError={(message) => setErrors({ form: message })}
+        />
+
         <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
           <ShieldCheck size={13} className="text-[#16A34A]" />
-          Passwords are stored as salted SHA-256 hashes on this device.
+          Secured with Better Auth.
         </p>
       </form>
-
-      <div className="my-5 flex items-center gap-3">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          or continue with
-        </span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <GoogleButton destination={destination} />
     </div>
   );
 }

@@ -22,34 +22,52 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Authentication
 
-The site ships with email/password auth and Google sign-in:
+Auth is handled entirely by [Better Auth](https://www.better-auth.com/) with
+the MongoDB adapter — there is no other auth system in the codebase.
 
 - `/register` — name, email, photo URL (optional), password.
   Passwords must contain an uppercase letter, a lowercase letter and be at
-  least 6 characters.
-- `/login` — email + password, plus "Continue with Google".
+  least 6 characters; the rules are shown live under the field and failing
+  them raises an inline error plus a toast.
+- `/login` — email + password, plus "Continue with Google". A successful
+  login shows a toast, and weak passwords are rejected before the request is
+  sent.
 - `/create-event` — only signed-in volunteers can publish; guests see a
   sign-in prompt.
 
-Accounts and sessions are stored in the browser (`localStorage`). Passwords
-are salted and hashed with SHA-256 via the Web Crypto API before storage —
-fine for this demo, but swap in a real backend (e.g. Firebase Auth) before
-going to production.
+Users, sessions and accounts live in the `change-together` MongoDB database
+(`user`, `session`, `account`, `verification`). The session is read on the
+client through `useSession` from `src/lib/auth-client.ts`; there is no
+server-side session helper for components.
 
 ### Google sign-in
 
-The real Google Identity Services flow runs when an OAuth client ID is
-configured:
+Google is enabled only when both server credentials are present:
 
 ```bash
 # .env.local
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-Create the client ID in the Google Cloud console and add
-`http://localhost:3000` to the authorised JavaScript origins. Without that
-variable the Google button falls back to a demo account so the flow can still
-be tested locally.
+Add `http://localhost:3000/api/auth/callback/google` as an authorised
+redirect URI in the Google Cloud console (and `http://localhost:3000` as an
+authorised JavaScript origin). Without these variables the button stays
+visible but sign-in fails with a toast explaining that OAuth is not
+configured.
+
+## Home page
+
+`/` is composed of `Hero` → `Features` → `RecentEvents` → `Gallery` →
+`Newsletter`:
+
+- `RecentEvents` fetches `/api/recent-events`, which queries the MongoDB
+  `create-event` collection with
+  `.find({ date: { $gte: today } }).sort({ date: 1 }).limit(6)` and falls
+  back to the external REST API when Mongo is unreachable. The route is
+  dynamic and Node-runtime so it always reflects newly created events.
+- `Newsletter` is design-only: submitting shows a toast, nothing is stored.
 
 ## Learn More
 

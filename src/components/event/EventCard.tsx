@@ -111,7 +111,9 @@ export default function EventCard({ event, joinedAt }: EventCardProps) {
         <div className="mt-auto border-t border-slate-100 pt-3.5">
           <p className="flex items-center gap-1.5 text-xs text-slate-500">
             <Mail size={14} className="shrink-0 text-slate-400" />
-            <span className="truncate">{event.organizerEmail}</span>
+            <span className="truncate">
+              {event.organizerEmail || "Community organiser"}
+            </span>
             <span className="ml-auto shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
               Organiser
             </span>

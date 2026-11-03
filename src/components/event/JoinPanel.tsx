@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarX,
@@ -10,11 +10,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import {
-  getServerUserSnapshot,
-  getUserSnapshot,
-  subscribeToUser,
-} from "@/lib/auth";
+import { useSession } from "@/lib/auth-client";
 import {
   ApiError,
   getJoinStatus,
@@ -37,11 +33,14 @@ export default function JoinPanel({
   hasEnded,
 }: JoinPanelProps) {
   const router = useRouter();
-  const user = useSyncExternalStore(
-    subscribeToUser,
-    getUserSnapshot,
-    getServerUserSnapshot,
-  );
+  const { data: session } = useSession();
+  const user = session?.user
+    ? {
+        email: session.user.email,
+        displayName: session.user.name ?? "",
+        photoURL: session.user.image ?? undefined,
+      }
+    : null;
   const email = user?.email ?? "";
 
   // Status fetched from the API, tagged with the email it belongs to

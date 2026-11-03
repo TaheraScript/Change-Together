@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,11 +21,7 @@ import {
   UserPlus,
   XCircle,
 } from "lucide-react";
-import {
-  getServerUserSnapshot,
-  getUserSnapshot,
-  subscribeToUser,
-} from "@/lib/auth";
+import { useSession } from "@/lib/auth-client";
 import {
   ApiError,
   EVENT_TYPES,
@@ -75,11 +71,14 @@ const iconBase =
 
 export default function CreateEventForm() {
   const router = useRouter();
-  const user = useSyncExternalStore(
-    subscribeToUser,
-    getUserSnapshot,
-    getServerUserSnapshot,
-  );
+  const { data: session } = useSession();
+  const user = session?.user
+    ? {
+        email: session.user.email,
+        displayName: session.user.name ?? "",
+        photoURL: session.user.image ?? undefined,
+      }
+    : null;
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
