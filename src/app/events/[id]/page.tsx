@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import EventDetails from "@/components/event/EventDetails";
 import EventMessage from "@/components/event/EventMessage";
-import type { EventRecord } from "@/lib/events";
+import { API_URL, type EventRecord } from "@/lib/events";
 
 export const metadata: Metadata = {
   title: "Event Details | Change Together",
@@ -20,7 +20,7 @@ export default async function EventDetailsPage({
   let outcome: "ok" | "missing" | "error" = "ok";
 
   try {
-    const res = await fetch(`http://localhost:5000/events/${id}`, {
+    const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       cache: "no-store",
     });
 

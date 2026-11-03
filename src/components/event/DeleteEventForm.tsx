@@ -34,7 +34,7 @@ export default function DeleteEventForm({
     setDeleting(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/events/${event._id}`, {
+      const res = await fetch(`/api/events/${encodeURIComponent(event._id)}`, {
         method: "DELETE",
       });
 

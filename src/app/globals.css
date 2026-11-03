@@ -164,24 +164,24 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: #0b1620;
+  --foreground: #e6eef4;
+  --card: #122231;
+  --card-foreground: #e6eef4;
+  --popover: #122231;
+  --popover-foreground: #e6eef4;
+  --primary: #16a34a;
+  --primary-foreground: #ffffff;
+  --secondary: #16293a;
+  --secondary-foreground: #e6eef4;
+  --muted: #16293a;
+  --muted-foreground: #94a9b9;
+  --accent: #16293a;
+  --accent-foreground: #e6eef4;
+  --destructive: #f87171;
+  --border: #22394a;
+  --input: #22394a;
+  --ring: #16a34a;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -207,4 +207,238 @@
   html {
     @apply font-sans;
   }
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Dark theme bridge
+ *
+ * The feature components use a fixed brand palette (white surfaces,
+ * slate text, the #164E63 teal) rather than shadcn's semantic tokens.
+ * These rules re-map that palette when `.dark` is set on <html>, so the
+ * whole app flips themes without rewriting every component.
+ * Unlayered rules win over Tailwind's layered utilities.
+ * ------------------------------------------------------------------ */
+
+/* Surfaces */
+.dark .bg-white {
+  background-color: #122231;
+}
+.dark .bg-white\/95 {
+  background-color: rgb(18 34 49 / 0.95);
+}
+.dark .bg-white\/90 {
+  background-color: rgb(18 34 49 / 0.9);
+}
+.dark .bg-white\/80 {
+  background-color: rgb(18 34 49 / 0.8);
+}
+.dark .bg-\[\#FBFAF6\] {
+  background-color: #0b1620;
+}
+.dark .bg-slate-50 {
+  background-color: #16293a;
+}
+.dark .bg-slate-50\/70 {
+  background-color: rgb(22 41 58 / 0.7);
+}
+.dark .bg-slate-100 {
+  background-color: #1c3040;
+}
+.dark .bg-slate-200 {
+  background-color: #22394a;
+}
+
+/* Tinted surfaces keep their hue, just at a dark-mode lightness. */
+.dark .bg-green-50 {
+  background-color: rgb(22 163 74 / 0.14);
+}
+.dark .bg-green-100 {
+  background-color: rgb(22 163 74 / 0.2);
+}
+.dark .bg-amber-50 {
+  background-color: rgb(245 158 11 / 0.14);
+}
+.dark .bg-amber-100 {
+  background-color: rgb(245 158 11 / 0.2);
+}
+.dark .bg-red-50 {
+  background-color: rgb(248 113 113 / 0.14);
+}
+.dark .bg-red-100 {
+  background-color: rgb(248 113 113 / 0.22);
+}
+.dark .bg-sky-50 {
+  background-color: rgb(14 165 233 / 0.14);
+}
+.dark .bg-teal-50 {
+  background-color: rgb(20 184 166 / 0.14);
+}
+
+/* Borders */
+.dark .border-slate-200 {
+  border-color: #22394a;
+}
+.dark .border-slate-200\/80 {
+  border-color: rgb(34 57 74 / 0.8);
+}
+.dark .border-slate-100 {
+  border-color: #1b2f3d;
+}
+.dark .border-green-200 {
+  border-color: rgb(34 197 94 / 0.35);
+}
+.dark .border-green-100 {
+  border-color: rgb(34 197 94 / 0.25);
+}
+.dark .border-red-200 {
+  border-color: rgb(248 113 113 / 0.4);
+}
+.dark .border-amber-200 {
+  border-color: rgb(245 158 11 / 0.4);
+}
+
+/* Text */
+.dark .text-\[\#164E63\] {
+  color: #dbeaf3;
+}
+.dark .text-slate-900 {
+  color: #f1f5f9;
+}
+.dark .text-slate-800 {
+  color: #e2e8f0;
+}
+.dark .text-slate-700 {
+  color: #c6d6e2;
+}
+.dark .text-slate-600 {
+  color: #aec2d0;
+}
+.dark .text-slate-500 {
+  color: #94a9b9;
+}
+.dark .text-slate-400 {
+  color: #7d92a4;
+}
+
+/* Green accents need a lighter tone on a dark surface. */
+.dark .text-green-700 {
+  color: #4ade80;
+}
+.dark .text-green-800 {
+  color: #86efac;
+}
+.dark .text-red-700 {
+  color: #fca5a5;
+}
+.dark .text-red-600 {
+  color: #fca5a5;
+}
+.dark .text-amber-800 {
+  color: #fcd34d;
+}
+
+/* The dashed "empty state" cards. */
+.dark .border-dashed {
+  border-color: #2a4356;
+}
+
+/* Hero / gallery decorative blobs should not glow white in dark mode. */
+.dark .bg-green-100.blur-3xl,
+.dark .bg-green-100.blur-3xl.opacity-60,
+.dark .bg-green-100.blur-3xl.opacity-50 {
+  background-color: rgb(22 163 74 / 0.12);
+}
+
+/* Deep teal buttons/labels get a small lift so they still read as "filled"
+   against the near-black page background. */
+.dark .bg-\[\#164E63\] {
+  background-color: #1a5f78;
+}
+.dark .bg-\[\#0e3a4b\],
+.dark .bg-\[\#0E3A4B\] {
+  background-color: #0e2a36;
+}
+
+/* Hover states are separate class names, so each needs its own override. */
+.dark .hover\:bg-green-50:hover {
+  background-color: rgb(22 163 74 / 0.16);
+}
+.dark .hover\:bg-green-100:hover {
+  background-color: rgb(22 163 74 / 0.24);
+}
+.dark .hover\:bg-red-50:hover {
+  background-color: rgb(248 113 113 / 0.16);
+}
+.dark .hover\:bg-red-100:hover {
+  background-color: rgb(248 113 113 / 0.24);
+}
+.dark .hover\:bg-slate-50:hover {
+  background-color: #16293a;
+}
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1c3040;
+}
+.dark .hover\:bg-white:hover {
+  background-color: #122231;
+}
+.dark .hover\:border-green-200:hover,
+.dark .hover\:border-green-300:hover {
+  border-color: rgb(74 222 128 / 0.45);
+}
+.dark .hover\:border-slate-300:hover {
+  border-color: #2f4a5e;
+}
+.dark .hover\:text-green-700:hover,
+.dark .hover\:text-green-600:hover {
+  color: #86efac;
+}
+.dark .hover\:text-slate-600:hover,
+.dark .hover\:text-slate-500:hover {
+  color: #dbeaf3;
+}
+
+/* Inputs: the light fill turns into a light surface on focus. */
+.dark .focus\:bg-white:focus {
+  background-color: #16293a;
+}
+.dark .focus\:ring-green-100:focus,
+.dark .focus\:ring-slate-200:focus {
+  --tw-ring-color: rgb(74 222 128 / 0.28);
+}
+.dark .focus\:ring-red-100:focus {
+  --tw-ring-color: rgb(248 113 113 / 0.35);
+}
+.dark .ring-green-100 {
+  --tw-ring-color: rgb(74 222 128 / 0.28);
+}
+.dark .ring-slate-200 {
+  --tw-ring-color: rgb(148 163 184 / 0.3);
+}
+.dark .placeholder\:text-slate-400::placeholder {
+  color: #6f8496;
+}
+
+/* Gradient fallbacks/headers: `via-white` and friends would glow in dark mode.
+   Targeting the whole gradient is more reliable than patching the stop vars. */
+.dark .from-green-50.via-white.to-amber-50 {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(22 163 74 / 0.12),
+    #122231,
+    rgb(245 158 11 / 0.12)
+  );
+}
+.dark .from-green-50\/80.via-white.to-white {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(22 163 74 / 0.1),
+    #122231,
+    #122231
+  );
 }

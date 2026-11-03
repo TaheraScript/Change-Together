@@ -79,7 +79,7 @@ export default function RegisterForm() {
   const passwordChecks = checkPassword(password);
   const strength = passwordChecks.filter((check) => check.met).length;
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLElement>) => {
     event.preventDefault();
     if (loading) return;
 

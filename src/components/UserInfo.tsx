@@ -95,11 +95,11 @@ export default function UserInfo() {
         <Button
           variant="outline"
           size="sm"
-          className="border-green-200 text-green-700 hover:bg-green-50"
+          className="hidden border-green-200 text-green-700 hover:bg-green-50 sm:inline-flex"
           render={<Link href="/register" />}
         >
           <UserPlus />
-          <span className="hidden sm:inline">Register</span>
+          <span>Register</span>
         </Button>
       </div>
     );

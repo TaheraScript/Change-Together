@@ -1,14 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ComponentType } from "react";
 import {
   ArrowUp,
   CalendarClock,
-  Globe,
   HeartHandshake,
   Mail,
   MapPin,
   Phone,
-  Send,
 } from "lucide-react";
 
 const EXPLORE_LINKS = [
@@ -35,10 +34,43 @@ const CONTACT = [
   { icon: MapPin, label: "Dhaka, Bangladesh", href: null },
 ];
 
-const SOCIALS = [
-  { icon: Globe, label: "Facebook", href: "https://www.facebook.com/" },
-  { icon: Send, label: "X (Twitter)", href: "https://x.com/" },
-  { icon: Mail, label: "Instagram", href: "https://www.instagram.com/" },
+/* Brand marks (lucide has no brand icons, so these are the official glyphs). */
+function FacebookMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99A10 10 0 0 0 22 12Z" />
+    </svg>
+  );
+}
+
+function XMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z" />
+    </svg>
+  );
+}
+
+const SOCIALS: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  href: string;
+}[] = [
+  {
+    icon: FacebookMark,
+    label: "Facebook",
+    href: "https://www.facebook.com/",
+  },
+  {
+    icon: XMark,
+    label: "X (formerly Twitter)",
+    href: "https://x.com/",
+  },
+  {
+    icon: Mail,
+    label: "Email us",
+    href: "mailto:volunteer@changetogether.org",
+  },
 ];
 
 export default function Footer() {
@@ -94,7 +126,7 @@ export default function Footer() {
                     aria-label={social.label}
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 ring-1 ring-white/10 transition hover:bg-green-500 hover:text-white hover:ring-green-400"
                   >
-                    <Icon size={16} />
+                    <Icon className="h-4 w-4" />
                   </a>
                 );
               })}

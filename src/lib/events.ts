@@ -57,7 +57,7 @@ export type JoinedEventRecord = {
   joinedAt: string;
 };
 
-const API_URL = (
+export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
 ).replace(/\/$/, "");
 
@@ -99,6 +99,45 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getUpcomingEvents(): Promise<EventRecord[]> {
   return apiRequest<EventRecord[]>("/upcoming-events");
+}
+
+/**
+ * Same-origin route that enforces "you can only change your own event"
+ * against the Better Auth session before touching the events API.
+ */
+async function ownerRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      payload &&
+      typeof payload === "object" &&
+      "message" in payload &&
+      typeof payload.message === "string"
+        ? payload.message
+        : "Something went wrong. Please try again.";
+    throw new ApiError(message, response.status);
+  }
+
+  return payload as T;
+}
+
+/** True when the signed-in volunteer created this event. */
+export function isEventOwner(
+  event: EventRecord,
+  email: string | null | undefined,
+): boolean {
+  const owner = event.organizerEmail?.trim().toLowerCase();
+  const me = email?.trim().toLowerCase();
+  return Boolean(owner && me && owner === me);
 }
 
 export function getEvent(id: string): Promise<EventRecord> {
@@ -143,19 +182,17 @@ export function updateEvent(
   id: string,
   input: Partial<CreateEventInput>,
 ): Promise<EventRecord> {
-  return apiRequest<{ event: EventRecord }>(
-    `/events/${encodeURIComponent(id)}`,
-    {
-      method: "PUT",
-      body: JSON.stringify(input),
-    },
-  ).then((result) => result.event);
+  return ownerRequest<EventRecord>(`/api/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
-export function deleteEvent(id: string): Promise<void> {
-  return apiRequest<void>(`/events/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
+export function deleteEvent(id: string): Promise<{ deleted: boolean }> {
+  return ownerRequest<{ deleted: boolean }>(
+    `/api/events/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
 }
 
 export function formatEventDate(date: string): string {
