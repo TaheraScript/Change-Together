@@ -19,7 +19,7 @@ import {
 import { signUp } from "@/lib/auth-client";
 import { toast } from "@/components/ui/toast";
 import { checkPassword, isPasswordValid, isValidEmail } from "@/lib/utils";
-import GoogleButton from "@/components/auth/GoogleButton";
+import GoogleButton from "@/components/auth/GithubButton";
 
 type FormErrors = {
   name?: string;
