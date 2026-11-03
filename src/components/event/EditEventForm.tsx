@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ const getInitialValues = (event: EventRecord) => ({
 });
 
 export default function EditEventForm({ event, onUpdated }: EditEventFormProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(() => getInitialValues(event));
   const [submitting, setSubmitting] = useState(false);
@@ -85,6 +87,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
       });
 
       setOpen(false);
+      router.refresh();
       onUpdated?.();
     } catch (error) {
       toast.add({
