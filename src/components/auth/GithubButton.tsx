@@ -30,31 +30,33 @@ export default function GithubButton({
 }: GithubButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const configured = Boolean(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID);
 
   const handleClick = async () => {
     if (loading) return;
     setLoading(true);
 
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000";
+      // A relative callbackURL resolves against the app's own origin,
+      // so it is always trusted (localhost:3000 locally, your domain on Vercel).
       const { data, error } = await signIn.social({
         provider: "github",
-        callbackURL: `${baseURL}${destination}`,
+        callbackURL: destination,
       });
 
       if (error) {
         throw error;
       }
 
+      // Keep the button in its loading state while the browser leaves for GitHub.
       if (data?.url) {
         window.location.href = data.url;
       } else {
         router.push(destination);
       }
     } catch (error) {
-      const rawMessage =
+      setLoading(false);
+
+      const message =
         error instanceof Error
           ? error.message
           : typeof error === "object" &&
@@ -64,16 +66,7 @@ export default function GithubButton({
             ? (error as { message: string }).message
             : "GitHub sign-in failed. Please try again.";
 
-      const message = configured
-        ? rawMessage
-        : "GitHub sign-in isn't available right now. Please try another sign-in option.";
-
-      if (!configured) {
-        console.error(
-          "GitHub OAuth not configured: add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to .env.local and restart the server.",
-          rawMessage,
-        );
-      }
+      console.error("GitHub sign-in error:", error);
 
       toast.add({
         type: "error",
@@ -81,8 +74,6 @@ export default function GithubButton({
         description: message,
       });
       onError?.(message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -102,16 +93,9 @@ export default function GithubButton({
         {loading ? "Connecting to GitHub…" : "Continue with GitHub"}
       </button>
 
-      {!configured ? (
-        <p className="mt-2 text-center text-xs leading-relaxed text-slate-400">
-          GitHub sign-in isn&apos;t available right now. Please use your email
-          or another sign-in option.
-        </p>
-      ) : (
-        <p className="mt-2 text-center text-xs leading-relaxed text-slate-400">
-          We only use your GitHub name and email to create your account.
-        </p>
-      )}
+      <p className="mt-2 text-center text-xs leading-relaxed text-slate-400">
+        We only use your GitHub name and email to create your account.
+      </p>
     </div>
   );
 }

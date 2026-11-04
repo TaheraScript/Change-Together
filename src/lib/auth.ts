@@ -5,7 +5,9 @@ import { mongodbAdapter } from "@better-auth/mongo-adapter";
 const client = new MongoClient(process.env.MONGODB_URI as string);
 const db = client.db("change-together");
 
-const isGoogleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID);
+const isGithubConfigured = Boolean(
+  process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
+);
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL as string,
@@ -17,7 +19,7 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 6,
   },
-  ...(isGoogleConfigured
+  ...(isGithubConfigured
     ? {
         socialProviders: {
           github: {

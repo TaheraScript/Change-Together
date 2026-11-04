@@ -57,9 +57,11 @@ export type JoinedEventRecord = {
   joinedAt: string;
 };
 
-export const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
-).replace(/\/$/, "");
+// Must be a NEXT_PUBLIC_ variable because this file is used in client components.
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(
+  /\/$/,
+  "",
+);
 
 export class ApiError extends Error {
   status: number;
@@ -71,12 +73,32 @@ export class ApiError extends Error {
   }
 }
 
+function extractMessage(payload: unknown): string {
+  return payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof payload.message === "string"
+    ? payload.message
+    : "Something went wrong. Please try again.";
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_URL) {
+    throw new ApiError(
+      "The events service isn't configured. Set NEXT_PUBLIC_API_URL in .env.local and restart the server.",
+      500,
+    );
+  }
+
+  const hasBody = init?.body !== undefined && init?.body !== null;
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     cache: "no-store",
     headers: {
-      "Content-Type": "application/json",
+      // Only send Content-Type when there is a body, so plain GETs
+      // don't trigger a CORS preflight.
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -84,14 +106,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message =
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string"
-        ? payload.message
-        : "Something went wrong. Please try again.";
-    throw new ApiError(message, response.status);
+    throw new ApiError(extractMessage(payload), response.status);
   }
 
   return payload as T;
@@ -106,10 +121,12 @@ export function getUpcomingEvents(): Promise<EventRecord[]> {
  * against the Better Auth session before touching the events API.
  */
 async function ownerRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const hasBody = init.body !== undefined && init.body !== null;
+
   const response = await fetch(path, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(init.headers ?? {}),
     },
   });
@@ -117,14 +134,7 @@ async function ownerRequest<T>(path: string, init: RequestInit): Promise<T> {
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message =
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string"
-        ? payload.message
-        : "Something went wrong. Please try again.";
-    throw new ApiError(message, response.status);
+    throw new ApiError(extractMessage(payload), response.status);
   }
 
   return payload as T;

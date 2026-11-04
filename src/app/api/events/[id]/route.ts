@@ -5,9 +5,20 @@ import { auth } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Prefer a server-only variable, fall back to the public one.
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ""
 ).replace(/\/$/, "");
+
+// Only these fields may be changed through this route.
+const EDITABLE_FIELDS = [
+  "title",
+  "description",
+  "type",
+  "thumbnailUrl",
+  "location",
+  "date",
+] as const;
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -21,6 +32,18 @@ function normalizeEmail(value: unknown): string {
  * against the signed-in Better Auth session before proxying the mutation.
  */
 async function assertOwner(request: Request, id: string) {
+  if (!API_URL) {
+    console.error(
+      "Events API URL is missing. Set NEXT_PUBLIC_API_URL (or API_URL) in .env.local and restart the server.",
+    );
+    return {
+      response: NextResponse.json(
+        { message: "The events service isn't configured." },
+        { status: 500 },
+      ),
+    };
+  }
+
   const session = await auth.api.getSession({ headers: request.headers });
 
   if (!session?.user?.email) {
@@ -67,7 +90,7 @@ async function assertOwner(request: Request, id: string) {
     };
   }
 
-  const owner = normalizeEmail(event.organizerEmail);
+  const owner = normalizeEmail(event?.organizerEmail);
   const me = normalizeEmail(session.user.email);
 
   if (!owner || owner !== me) {
@@ -89,9 +112,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if ("response" in guard) return guard.response;
 
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json(
       { message: "Invalid request body." },
+      { status: 400 },
+    );
+  }
+
+  // Whitelist fields so ownership (organizerEmail) and _id can't be changed.
+  const update: Record<string, unknown> = {};
+  for (const field of EDITABLE_FIELDS) {
+    if (field in body) update[field] = (body as Record<string, unknown>)[field];
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json(
+      { message: "No editable fields were provided." },
       { status: 400 },
     );
   }
@@ -100,7 +136,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(update),
     });
 
     if (!res.ok) {
