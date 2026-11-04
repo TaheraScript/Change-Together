@@ -44,12 +44,7 @@ export type JoinResponse = {
   joined: true;
   joinCount: number;
   joinedAt: string;
-};
-
-export type JoinUser = {
-  email: string;
-  displayName: string;
-  photoURL?: string;
+  alreadyJoined?: boolean;
 };
 
 export type JoinedEventRecord = {
@@ -117,14 +112,16 @@ export function getUpcomingEvents(): Promise<EventRecord[]> {
 }
 
 /**
- * Same-origin route that enforces "you can only change your own event"
- * against the Better Auth session before touching the events API.
+ * Same-origin request used for everything the Next app owns: ownership
+ * checks, joins and the joined list. Unlike `apiRequest` it does not depend
+ * on `NEXT_PUBLIC_API_URL`.
  */
-async function ownerRequest<T>(path: string, init: RequestInit): Promise<T> {
+async function internalRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const hasBody = init.body !== undefined && init.body !== null;
 
   const response = await fetch(path, {
     ...init,
+    cache: "no-store",
     headers: {
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(init.headers ?? {}),
@@ -150,56 +147,69 @@ export function isEventOwner(
   return Boolean(owner && me && owner === me);
 }
 
-export function getEvent(id: string): Promise<EventRecord> {
-  return apiRequest<EventRecord>(`/events/${encodeURIComponent(id)}`);
+export function getEvent(
+  id: string,
+  init?: RequestInit,
+): Promise<EventRecord> {
+  return apiRequest<EventRecord>(`/events/${encodeURIComponent(id)}`, init);
 }
 
 export function addEvent(input: CreateEventInput): Promise<EventRecord> {
-  return apiRequest<{ insertedId: string; event: EventRecord }>("/create-event", {
-    method: "POST",
-    body: JSON.stringify(input),
-  }).then((result) => result.event);
+  // Same-origin Mongo route: works even when the external events API is down.
+  return internalRequest<{ insertedId: string; event: EventRecord }>(
+    "/api/events",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  ).then((result) => result.event);
 }
 
-export function getJoinStatus(
-  id: string,
-  email: string,
-): Promise<JoinStatus> {
-  return apiRequest<JoinStatus>(
-    `/events/${encodeURIComponent(id)}/join?email=${encodeURIComponent(email)}`,
+export function getJoinStatus(id: string): Promise<JoinStatus> {
+  return internalRequest<JoinStatus>(`/api/events/${encodeURIComponent(id)}/join`);
+}
+
+export function joinEvent(id: string): Promise<JoinResponse> {
+  return internalRequest<JoinResponse>(
+    `/api/events/${encodeURIComponent(id)}/join`,
+    { method: "POST" },
   );
 }
 
-export function joinEvent(
-  id: string,
-  user: JoinUser,
-): Promise<JoinResponse> {
-  return apiRequest<JoinResponse>(`/events/${encodeURIComponent(id)}/join`, {
-    method: "POST",
-    body: JSON.stringify({ user }),
-  });
+/** Leave the event: deletes this user's join row. */
+export function leaveEvent(id: string): Promise<JoinStatus> {
+  return internalRequest<JoinStatus>(
+    `/api/events/${encodeURIComponent(id)}/join`,
+    { method: "DELETE" },
+  );
 }
 
-export function getMyJoinedEvents(
-  email: string,
-): Promise<JoinedEventRecord[]> {
-  return apiRequest<JoinedEventRecord[]>(
-    `/my-events?email=${encodeURIComponent(email)}`,
-  );
+export function getMyJoinedEvents(): Promise<JoinedEventRecord[]> {
+  return internalRequest<JoinedEventRecord[]>("/api/my-events");
+}
+
+/** Events created by the signed-in volunteer (owner-scoped server-side). */
+export function getMyEvents(): Promise<EventRecord[]> {
+  return internalRequest<EventRecord[]>("/api/manage-events");
+}
+
+/** Upcoming events from this app's Mongo-backed route (no external API). */
+export function getUpcomingEventsFromApp(): Promise<EventRecord[]> {
+  return internalRequest<EventRecord[]>("/api/events");
 }
 
 export function updateEvent(
   id: string,
   input: Partial<CreateEventInput>,
 ): Promise<EventRecord> {
-  return ownerRequest<EventRecord>(`/api/events/${encodeURIComponent(id)}`, {
+  return internalRequest<EventRecord>(`/api/events/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(input),
   });
 }
 
 export function deleteEvent(id: string): Promise<{ deleted: boolean }> {
-  return ownerRequest<{ deleted: boolean }>(
+  return internalRequest<{ deleted: boolean }>(
     `/api/events/${encodeURIComponent(id)}`,
     { method: "DELETE" },
   );

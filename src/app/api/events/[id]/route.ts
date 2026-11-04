@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getApiUser } from "@/lib/api-auth";
+import {
+  EVENT_TYPES,
+  type EventRecord,
+} from "@/lib/events";
+import {
+  EDITABLE_EVENT_FIELDS,
+  deleteEventInDb,
+  findEventInMongo,
+  updateEventInDb,
+  type EventUpdate,
+} from "@/lib/events-server";
 
 // Ownership checks use the Better Auth session, so keep this on Node.
 export const runtime = "nodejs";
@@ -10,15 +21,7 @@ const API_URL = (
   process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ""
 ).replace(/\/$/, "");
 
-// Only these fields may be changed through this route.
-const EDITABLE_FIELDS = [
-  "title",
-  "description",
-  "type",
-  "thumbnailUrl",
-  "location",
-  "date",
-] as const;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -26,36 +29,126 @@ function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+function isOwner(event: EventRecord, email: string): boolean {
+  const owner = normalizeEmail(event.organizerEmail);
+  return Boolean(owner && owner === normalizeEmail(email));
+}
+
 /**
- * Only the volunteer who created an event may update or delete it.
- * The external events API has no notion of ownership, so we enforce it here
- * against the signed-in Better Auth session before proxying the mutation.
+ * Whitelists and validates the editable fields. Returns the update or an
+ * error message; ownership (`organizerEmail`) and `_id` can never change.
  */
-async function assertOwner(request: Request, id: string) {
-  if (!API_URL) {
-    console.error(
-      "Events API URL is missing. Set NEXT_PUBLIC_API_URL (or API_URL) in .env.local and restart the server.",
+function parseUpdate(
+  body: unknown,
+): { update: EventUpdate } | { message: string } {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { message: "Invalid request body." };
+  }
+
+  const payload = body as Record<string, unknown>;
+  const update: EventUpdate = {};
+
+  for (const field of EDITABLE_EVENT_FIELDS) {
+    if (!(field in payload)) continue;
+    const value = payload[field];
+    if (typeof value !== "string") {
+      return { message: `${field} must be text.` };
+    }
+    update[field] = value.trim();
+  }
+
+  if (Object.keys(update).length === 0) {
+    return { message: "No editable fields were provided." };
+  }
+
+  if (update.title !== undefined && update.title.length < 5) {
+    return { message: "Add a clear event title (at least 5 characters)." };
+  }
+  if (
+    update.type !== undefined &&
+    !EVENT_TYPES.includes(update.type as (typeof EVENT_TYPES)[number])
+  ) {
+    return { message: "Choose a valid event type." };
+  }
+  if (update.location !== undefined && update.location.length < 3) {
+    return { message: "Add a venue or area for the event." };
+  }
+  if (update.description !== undefined && update.description.length < 20) {
+    return {
+      message:
+        "Describe the event in at least 20 characters so volunteers know what to expect.",
+    };
+  }
+  if (
+    update.date !== undefined &&
+    (!DATE_PATTERN.test(update.date) ||
+      Number.isNaN(new Date(`${update.date}T00:00:00`).getTime()))
+  ) {
+    return { message: "Choose a valid event date." };
+  }
+
+  return { update };
+}
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const { id } = await params;
+
+  const user = await getApiUser(request);
+
+  if (!user) {
+    return NextResponse.json(
+      { message: "Please sign in to manage events." },
+      { status: 401 },
     );
-    return {
-      response: NextResponse.json(
-        { message: "The events service isn't configured." },
+  }
+
+  const body: unknown = await request.json().catch(() => null);
+  const parsed = parseUpdate(body);
+  if ("message" in parsed) {
+    return NextResponse.json(
+      { message: parsed.message },
+      { status: 400 },
+    );
+  }
+
+  // Mongo is the source of truth: update in place while the API is offline.
+  const existing = await findEventInMongo(id);
+
+  if (existing) {
+    if (!isOwner(existing, user.email)) {
+      return NextResponse.json(
+        { message: "You can only change events you created." },
+        { status: 403 },
+      );
+    }
+
+    try {
+      const updated = await updateEventInDb(id, parsed.update);
+      if (!updated) {
+        return NextResponse.json(
+          { message: "This event no longer exists." },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(updated, { status: 200 });
+    } catch (error) {
+      console.error("[events] could not update the event:", error);
+      return NextResponse.json(
+        { message: "Couldn't update the event. Please try again." },
         { status: 500 },
-      ),
-    };
+      );
+    }
   }
 
-  const session = await auth.api.getSession({ headers: request.headers });
-
-  if (!session?.user?.email) {
-    return {
-      response: NextResponse.json(
-        { message: "Please sign in to manage events." },
-        { status: 401 },
-      ),
-    };
+  // Fallback for deployments that still store events in the REST service.
+  if (!API_URL) {
+    return NextResponse.json(
+      { message: "This event no longer exists." },
+      { status: 404 },
+    );
   }
 
-  let event: { organizerEmail?: string | null };
+  let restEvent: { organizerEmail?: string | null } | null = null;
 
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
@@ -63,72 +156,31 @@ async function assertOwner(request: Request, id: string) {
     });
 
     if (res.status === 404 || res.status === 400) {
-      return {
-        response: NextResponse.json(
-          { message: "This event no longer exists." },
-          { status: 404 },
-        ),
-      };
+      return NextResponse.json(
+        { message: "This event no longer exists." },
+        { status: 404 },
+      );
     }
-
     if (!res.ok) {
-      return {
-        response: NextResponse.json(
-          { message: "Couldn't reach the events service." },
-          { status: 502 },
-        ),
-      };
-    }
-
-    event = await res.json();
-  } catch {
-    return {
-      response: NextResponse.json(
+      return NextResponse.json(
         { message: "Couldn't reach the events service." },
         { status: 502 },
-      ),
-    };
-  }
+      );
+    }
 
-  const owner = normalizeEmail(event?.organizerEmail);
-  const me = normalizeEmail(session.user.email);
-
-  if (!owner || owner !== me) {
-    return {
-      response: NextResponse.json(
-        { message: "You can only change events you created." },
-        { status: 403 },
-      ),
-    };
-  }
-
-  return { event };
-}
-
-export async function PATCH(request: Request, { params }: RouteContext) {
-  const { id } = await params;
-
-  const guard = await assertOwner(request, id);
-  if ("response" in guard) return guard.response;
-
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    restEvent = await res.json();
+  } catch {
     return NextResponse.json(
-      { message: "Invalid request body." },
-      { status: 400 },
+      { message: "Couldn't reach the events service." },
+      { status: 502 },
     );
   }
 
-  // Whitelist fields so ownership (organizerEmail) and _id can't be changed.
-  const update: Record<string, unknown> = {};
-  for (const field of EDITABLE_FIELDS) {
-    if (field in body) update[field] = (body as Record<string, unknown>)[field];
-  }
-
-  if (Object.keys(update).length === 0) {
+  const owner = normalizeEmail(restEvent?.organizerEmail);
+  if (!owner || owner !== normalizeEmail(user.email)) {
     return NextResponse.json(
-      { message: "No editable fields were provided." },
-      { status: 400 },
+      { message: "You can only change events you created." },
+      { status: 403 },
     );
   }
 
@@ -136,9 +188,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
-         authorization: 'user logged in',
-        "Content-Type": "application/json" },
-      body: JSON.stringify(update),
+        authorization: "user logged in",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(parsed.update),
     });
 
     if (!res.ok) {
@@ -167,8 +220,86 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { id } = await params;
 
-  const guard = await assertOwner(request, id);
-  if ("response" in guard) return guard.response;
+  const user = await getApiUser(request);
+
+  if (!user) {
+    return NextResponse.json(
+      { message: "Please sign in to manage events." },
+      { status: 401 },
+    );
+  }
+
+  const existing = await findEventInMongo(id);
+
+  if (existing) {
+    if (!isOwner(existing, user.email)) {
+      return NextResponse.json(
+        { message: "You can only cancel events you created." },
+        { status: 403 },
+      );
+    }
+
+    try {
+      const deleted = await deleteEventInDb(id);
+      if (!deleted) {
+        return NextResponse.json(
+          { message: "This event no longer exists." },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json({ deleted: true }, { status: 200 });
+    } catch (error) {
+      console.error("[events] could not delete the event:", error);
+      return NextResponse.json(
+        { message: "Couldn't cancel the event. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Fallback for deployments that still store events in the REST service.
+  if (!API_URL) {
+    return NextResponse.json(
+      { message: "This event no longer exists." },
+      { status: 404 },
+    );
+  }
+
+  let restEvent: { organizerEmail?: string | null } | null = null;
+
+  try {
+    const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+    });
+
+    if (res.status === 404 || res.status === 400) {
+      return NextResponse.json(
+        { message: "This event no longer exists." },
+        { status: 404 },
+      );
+    }
+    if (!res.ok) {
+      return NextResponse.json(
+        { message: "Couldn't reach the events service." },
+        { status: 502 },
+      );
+    }
+
+    restEvent = await res.json();
+  } catch {
+    return NextResponse.json(
+      { message: "Couldn't reach the events service." },
+      { status: 502 },
+    );
+  }
+
+  const owner = normalizeEmail(restEvent?.organizerEmail);
+  if (!owner || owner !== normalizeEmail(user.email)) {
+    return NextResponse.json(
+      { message: "You can only cancel events you created." },
+      { status: 403 },
+    );
+  }
 
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {

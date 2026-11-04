@@ -19,10 +19,12 @@ import {
   XCircle,
 } from "lucide-react";
 // FIX: authClient was missing, which caused a ReferenceError.
-import { authClient, useSession } from "@/lib/auth-client";
-// addEvent and ApiError are no longer used here, because the fetch lives in handleSubmit.
+import { useSession } from "@/lib/auth-client";
+// Events are stored by this app's same-origin Mongo route, so creation keeps
+// working even when the external events API is offline.
 import {
   EVENT_TYPES,
+  addEvent,
   toDateInputValue,
   type EventRecord,
 } from "@/lib/events";
@@ -183,45 +185,19 @@ export default function CreateEventForm() {
 
     setSubmitting(true);
     try {
-      // 3. Your section, fixed: get a signed token for the logged-in user.
-      const { data, error } = await authClient.token();
-      const token = data?.token;
-      if (error || !token) {
-        throw new Error("Your session expired. Please log in again.");
-      }
+      // 3. Store the event in MongoDB through the same-origin route. The
+      //    server reads the organiser from the Better Auth session.
+      const saved = await addEvent({
+        title: values.title.trim(),
+        description: values.description.trim(),
+        type: values.type,
+        thumbnailUrl: values.thumbnailUrl.trim(),
+        location: values.location.trim(),
+        date: values.date,
+        organizerEmail: user.email,
+      });
 
-      // 4. POST to Express.
-      //    FIX: template literal so the env value is used (not literal text),
-      //    plus the correct spelling of "Content-Type" and "Authorization".
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/create-event`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          // FIX: send trimmed values, not the raw `values` object.
-          // Express should use the email from the verified token and ignore this one.
-          body: JSON.stringify({
-            title: values.title.trim(),
-            description: values.description.trim(),
-            type: values.type,
-            thumbnailUrl: values.thumbnailUrl.trim(),
-            location: values.location.trim(),
-            date: values.date,
-            organizerEmail: user.email,
-          }),
-        },
-      );
-
-      // 5. Use the response. Express replies { insertedId, event }.
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.message ?? "We couldn't publish your event.");
-      }
-
-      setSavedEvent(body.event as EventRecord);
+      setSavedEvent(saved);
       setSubmitting(false);
       redirectTimer.current = setTimeout(() => {
         router.push("/upcoming-events?created=1");

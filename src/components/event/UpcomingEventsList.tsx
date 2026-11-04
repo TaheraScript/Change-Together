@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import {
   EVENT_TYPES,
-  getUpcomingEvents,
+  getUpcomingEventsFromApp,
   isUpcoming,
   type EventRecord,
   type EventType,
@@ -155,7 +155,7 @@ export default function UpcomingEventsList({
 
     async function loadEvents() {
       try {
-        const data = await getUpcomingEvents();
+        const data = await getUpcomingEventsFromApp();
         if (!cancelled) {
           setFetchedEvents(data.filter((event) => isUpcoming(event.date)));
           setError("");

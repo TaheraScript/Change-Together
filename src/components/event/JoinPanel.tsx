@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import {
-  ApiError,
   getJoinStatus,
   joinEvent,
+  leaveEvent,
   type JoinStatus,
 } from "@/lib/events";
 import { toast } from "@/components/ui/toast";
@@ -33,46 +33,29 @@ export default function JoinPanel({
   hasEnded,
 }: JoinPanelProps) {
   const router = useRouter();
-  const { data: session } = useSession();
-  const user = session?.user
-    ? {
-        email: session.user.email,
-        displayName: session.user.name ?? "",
-        photoURL: session.user.image ?? undefined,
-      }
-    : null;
+  const { data: session, isPending } = useSession();
+  const user = session?.user ?? null;
   const email = user?.email ?? "";
 
-  // Status fetched from the API, tagged with the email it belongs to
-  const [fetched, setFetched] = useState<{
-    email: string;
-    status: JoinStatus;
-  } | null>(null);
-  const [joining, setJoining] = useState(false);
+  // Join count comes from the API, join state only exists for a session.
+  const [status, setStatus] = useState<JoinStatus>({
+    joined: false,
+    joinCount: initialJoinCount,
+    joinedAt: null,
+  });
+  const [working, setWorking] = useState(false);
 
-  // Derived during render: logged out, or data from a different user,
-  // falls back to the server-rendered default. No setState in the effect needed.
-  const status: JoinStatus =
-    email && fetched && fetched.email === email
-      ? fetched.status
-      : { joined: false, joinCount: initialJoinCount, joinedAt: null };
-
-  // Load this user's join status in the browser (depends on who is logged in)
+  // Refresh when the visitor signs in or out, so the button matches the user.
   useEffect(() => {
-    if (!email) return;
-
     let cancelled = false;
 
-    getJoinStatus(eventId, email)
+    getJoinStatus(eventId)
       .then((result) => {
         if (cancelled) return;
-        setFetched({
-          email,
-          status: {
-            joined: result.joined,
-            joinCount: result.joinCount ?? initialJoinCount,
-            joinedAt: result.joinedAt ?? null,
-          },
+        setStatus({
+          joined: Boolean(email) && result.joined,
+          joinCount: result.joinCount ?? initialJoinCount,
+          joinedAt: result.joinedAt ?? null,
         });
       })
       .catch(() => {
@@ -86,57 +69,42 @@ export default function JoinPanel({
 
   const joined = status.joined;
   const joinCount = status.joinCount ?? initialJoinCount;
+  const busy = working || isPending;
 
-  const handleJoin = async () => {
-    if (joining) return;
+  const handleClick = async () => {
+    if (busy) return;
 
+    // Joining needs a session; browsing the details page does not.
     if (!user) {
       router.push(`/login?next=${encodeURIComponent(`/events/${eventId}`)}`);
       return;
     }
 
-    if (joined) {
-      router.push("/joined-events");
-      return;
-    }
+    if (!joined && hasEnded) return;
 
-    if (hasEnded) return;
-
-    setJoining(true);
+    setWorking(true);
     try {
-      const result = await joinEvent(eventId, {
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+      if (joined) {
+        // Second click leaves the event, then shows what's left.
+        const result = await leaveEvent(eventId);
+        setStatus(result);
+        toast.add({
+          type: "info",
+          title: "You left the event",
+          description: `You're no longer joining “${eventTitle}”.`,
+        });
+        router.push("/joined-events");
+        return;
+      }
+
+      const result = await joinEvent(eventId);
+      setStatus({
+        joined: true,
+        joinCount: result.joinCount,
+        joinedAt: result.joinedAt,
       });
-      setFetched({
-        email: user.email,
-        status: {
-          joined: true,
-          joinCount: result.joinCount,
-          joinedAt: result.joinedAt,
-        },
-      });
-      toast.add({
-        type: "success",
-        title: "You're in!",
-        description: `You joined “${eventTitle}”. See it any time under My Events.`,
-      });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        try {
-          const refreshed = await getJoinStatus(eventId, user.email);
-          setFetched({ email: user.email, status: refreshed });
-        } catch {
-          setFetched((current) => ({
-            email: user.email,
-            status: {
-              joined: true,
-              joinCount: current?.status.joinCount ?? 0,
-              joinedAt: current?.status.joinedAt ?? null,
-            },
-          }));
-        }
+
+      if (result.alreadyJoined) {
         toast.add({
           type: "info",
           title: "Already joined",
@@ -144,16 +112,22 @@ export default function JoinPanel({
         });
       } else {
         toast.add({
-          type: "error",
-          title: "Couldn't join the event",
-          description:
-            err instanceof Error
-              ? err.message
-              : "Something went wrong. Please try again.",
+          type: "success",
+          title: "You're in!",
+          description: `You joined “${eventTitle}”. See it any time under My Events.`,
         });
       }
+    } catch (error) {
+      toast.add({
+        type: "error",
+        title: joined ? "Couldn't leave the event" : "Couldn't join the event",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.",
+      });
     } finally {
-      setJoining(false);
+      setWorking(false);
     }
   };
 
@@ -183,23 +157,23 @@ export default function JoinPanel({
 
       <button
         type="button"
-        onClick={handleJoin}
-        disabled={joining || (hasEnded && !joined)}
+        onClick={handleClick}
+        disabled={busy || (hasEnded && !joined)}
         className={`mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white shadow-lg transition focus:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-70 sm:text-base ${
           joined
             ? "bg-[#16A34A] shadow-green-900/20 hover:bg-green-700 focus-visible:ring-green-600/25"
             : "bg-[#164E63] shadow-[#164E63]/20 hover:bg-[#0e3a4b] focus-visible:ring-[#164E63]/25"
         }`}
       >
-        {joining ? (
+        {working ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Joining…
+            {joined ? "Leaving…" : "Joining…"}
           </>
         ) : joined ? (
           <>
             <CheckCircle2 size={18} />
-            Joined (click to view)
+            Joined (click to leave)
           </>
         ) : hasEnded ? (
           <>
@@ -222,8 +196,8 @@ export default function JoinPanel({
         </p>
       ) : joined ? (
         <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
-          You&apos;re on the list. Click the button again to see all events
-          you&apos;ve joined.
+          You&apos;re on the list. Click the button again to leave this event
+          and open the events you&apos;ve joined.
         </p>
       ) : (
         <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-400">

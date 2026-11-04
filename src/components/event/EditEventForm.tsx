@@ -16,15 +16,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { EVENT_TYPES, type EventRecord } from "@/lib/events";
 import { toast } from "@/components/ui/toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 
 type EditEventFormProps = {
   event: EventRecord;
   onUpdated?: () => void;
 };
 
+type FieldName =
+  | "title"
+  | "description"
+  | "type"
+  | "location"
+  | "date"
+  | "thumbnailUrl";
+
+type FormErrors = Partial<Record<FieldName, string>>;
+
 const inputBase =
-  "h-9 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-3 pr-3 text-sm text-slate-800 outline-none transition focus:bg-white focus:border-[#16A34A] focus:ring-1 focus:ring-[#16A34A]";
+  "h-9 w-full rounded-xl border bg-slate-50/70 pl-3 pr-3 text-sm text-slate-800 outline-none transition focus:bg-white focus:ring-1";
+const fieldClass = (invalid: boolean) =>
+  `${inputBase} ${
+    invalid
+      ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+      : "border-slate-200 focus:border-[#16A34A] focus:ring-[#16A34A]"
+  }`;
 
 const getInitialValues = (event: EventRecord) => ({
   title: event.title,
@@ -39,35 +55,103 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(() => getInitialValues(event));
+  const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   const update =
-    (field: keyof typeof values) =>
+    (field: FieldName) =>
     (
       e: ChangeEvent<
         HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
       >,
     ) => {
       setValues((current) => ({ ...current, [field]: e.target.value }));
+      setErrors((current) => {
+        if (!current[field]) return current;
+        const next = { ...current };
+        delete next[field];
+        return next;
+      });
     };
 
   // Reset the inputs to the latest event data each time the dialog opens.
   const handleOpenChange = (next: boolean) => {
-    if (next) setValues(getInitialValues(event));
+    if (next) {
+      setValues(getInitialValues(event));
+      setErrors({});
+    }
     setOpen(next);
+  };
+
+  const validate = (): FormErrors => {
+    const next: FormErrors = {};
+
+    if (values.title.trim().length < 5) {
+      next.title = "Add a clear event title (at least 5 characters).";
+    }
+    if (!values.type) {
+      next.type = "Select an event type.";
+    }
+    if (values.location.trim().length < 3) {
+      next.location = "Add a venue or area for the event.";
+    }
+    if (!values.date) {
+      next.date = "Pick a date for your event.";
+    } else {
+      const selected = new Date(`${values.date}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (Number.isNaN(selected.getTime())) {
+        next.date = "That date doesn't look right. Please pick again.";
+      } else if (selected <= today) {
+        next.date = "The event date must be in the future.";
+      }
+    }
+    const thumbnail = values.thumbnailUrl.trim();
+    if (
+      thumbnail &&
+      !/^https?:\/\/.+/i.test(thumbnail) &&
+      !thumbnail.startsWith("/")
+    ) {
+      next.thumbnailUrl =
+        "Use a valid link starting with http(s):// or an image path.";
+    }
+    if (values.description.trim().length < 20) {
+      next.description =
+        "Describe the event in at least 20 characters so volunteers know what to expect.";
+    }
+
+    return next;
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
+
+    const nextErrors = validate();
+    setErrors(nextErrors);
+
+    const firstInvalid = (Object.keys(nextErrors) as FieldName[]).find(
+      (field) => nextErrors[field],
+    );
+    if (firstInvalid) {
+      toast.add({
+        type: "error",
+        title: "Check your details",
+        description: nextErrors[firstInvalid],
+      });
+      document
+        .getElementById(`edit-${event._id}-${firstInvalid}`)
+        ?.focus({ preventScroll: true });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const res = await fetch(`/api/events/${encodeURIComponent(event._id)}`, {
         method: "PATCH",
-        headers: {
-          authorization: 'user logged in',
-           "Content-Type": "application/json" ,
-          },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: values.title.trim(),
           description: values.description.trim(),
@@ -107,7 +191,8 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        Edit Event
+        <Pencil size={15} />
+        Edit
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -124,33 +209,40 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
         >
           <div>
             <label
-              htmlFor="title"
+              htmlFor={`edit-${event._id}-title`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Event Title
             </label>
             <input
-              id="title"
+              id={`edit-${event._id}-title`}
               name="title"
               value={values.title}
               onChange={update("title")}
-              className={inputBase}
+              aria-invalid={Boolean(errors.title)}
+              className={fieldClass(Boolean(errors.title))}
             />
+            {errors.title && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.title}
+              </p>
+            )}
           </div>
 
           <div>
             <label
-              htmlFor="type"
+              htmlFor={`edit-${event._id}-type`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Event Type
             </label>
             <select
-              id="type"
+              id={`edit-${event._id}-type`}
               name="type"
               value={values.type}
               onChange={update("type")}
-              className={inputBase}
+              aria-invalid={Boolean(errors.type)}
+              className={fieldClass(Boolean(errors.type))}
             >
               {EVENT_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -158,72 +250,101 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
                 </option>
               ))}
             </select>
+            {errors.type && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.type}
+              </p>
+            )}
           </div>
 
           <div>
             <label
-              htmlFor="location"
+              htmlFor={`edit-${event._id}-location`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Location
             </label>
             <input
-              id="location"
+              id={`edit-${event._id}-location`}
               name="location"
               value={values.location}
               onChange={update("location")}
-              className={inputBase}
+              aria-invalid={Boolean(errors.location)}
+              className={fieldClass(Boolean(errors.location))}
             />
+            {errors.location && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.location}
+              </p>
+            )}
           </div>
 
           <div>
             <label
-              htmlFor="date"
+              htmlFor={`edit-${event._id}-date`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Date
             </label>
             <input
-              id="date"
+              id={`edit-${event._id}-date`}
               name="date"
               type="date"
               value={values.date}
               onChange={update("date")}
-              className={inputBase}
+              aria-invalid={Boolean(errors.date)}
+              className={fieldClass(Boolean(errors.date))}
             />
+            {errors.date && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.date}
+              </p>
+            )}
           </div>
 
           <div>
             <label
-              htmlFor="thumbnailUrl"
+              htmlFor={`edit-${event._id}-thumbnailUrl`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Thumbnail URL
             </label>
             <input
-              id="thumbnailUrl"
+              id={`edit-${event._id}-thumbnailUrl`}
               name="thumbnailUrl"
               value={values.thumbnailUrl}
               onChange={update("thumbnailUrl")}
-              className={inputBase}
+              aria-invalid={Boolean(errors.thumbnailUrl)}
+              className={fieldClass(Boolean(errors.thumbnailUrl))}
             />
+            {errors.thumbnailUrl && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.thumbnailUrl}
+              </p>
+            )}
           </div>
 
           <div>
             <label
-              htmlFor="description"
+              htmlFor={`edit-${event._id}-description`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
               Description
             </label>
             <textarea
-              id="description"
+              id={`edit-${event._id}-description`}
               name="description"
               value={values.description}
               onChange={update("description")}
               rows={3}
-              className={`${inputBase} min-h-[80px] resize-y`}
+              aria-invalid={Boolean(errors.description)}
+              className={`${fieldClass(Boolean(errors.description))} min-h-[80px] resize-y`}
             />
+            {errors.description && (
+              <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {errors.description}
+              </p>
+            )}
           </div>
 
           <DialogFooter>

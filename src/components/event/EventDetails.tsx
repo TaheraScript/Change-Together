@@ -49,11 +49,11 @@ export default function EventDetails({ event }: { event: EventRecord }) {
     <section className="min-h-screen bg-[#FBFAF6] py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-8">
         <Link
-          href="/upcoming-events"
+          href="/"
           className="inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-slate-500 transition hover:text-[#16A34A]"
         >
           <ArrowLeft size={16} />
-          Back to upcoming events
+          Back to home
         </Link>
 
         <div className="mt-5 grid gap-6 lg:grid-cols-[1.55fr_1fr]">

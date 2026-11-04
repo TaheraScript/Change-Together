@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, CheckCircle2, XCircle } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
 import {
   getMyJoinedEvents,
-  isUpcoming,
   type JoinedEventRecord,
 } from "@/lib/events";
 import EventCard from "./EventCard";
@@ -25,45 +23,37 @@ function CardSkeleton() {
 }
 
 export default function JoinedEventsList() {
-  const { data: session } = useSession();
-  const email = session?.user?.email ?? "";
-
-  const [data, setData] = useState<{
-    email: string;
-    joins: JoinedEventRecord[];
-  } | null>(null);
+  // The route reads the session server-side, so no email is passed around.
+  const [joins, setJoins] = useState<JoinedEventRecord[] | null>(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!email) return;
-
-    async function loadJoinedEvents() {
-      try {
-        const joinedEvents = await getMyJoinedEvents(email);
-        if (!cancelled) {
-          setData({
-            email,
-            joins: joinedEvents.filter((item) => isUpcoming(item.event.date)),
-          });
-          setError("");
-        }
-      } catch {
+    getMyJoinedEvents()
+      .then((joinedEvents) => {
+        if (cancelled) return;
+        // Every joined event stays visible, ordered by the event date.
+        setJoins(
+          [...joinedEvents].sort(
+            (a, b) =>
+              a.event.date.localeCompare(b.event.date) ||
+              b.joinedAt.localeCompare(a.joinedAt),
+          ),
+        );
+        setError("");
+      })
+      .catch(() => {
         if (!cancelled) {
           setError("We couldn't load the events you've joined. Please try again.");
         }
-      }
-    }
+      });
 
-    loadJoinedEvents();
     return () => {
       cancelled = true;
     };
-  }, [email, reloadKey]);
-
-  const joins = data?.email === email ? data.joins : null;
+  }, [reloadKey]);
 
   if (error) {
     return (
@@ -77,7 +67,7 @@ export default function JoinedEventsList() {
           type="button"
           onClick={() => {
             setError("");
-            setData(null);
+            setJoins(null);
             setReloadKey((key) => key + 1);
           }}
           className="rounded-xl bg-[#164E63] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#0e3a4b]"
@@ -132,11 +122,12 @@ export default function JoinedEventsList() {
 
   return (
     <div>
-      <p className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500">
+      <p className="mb-4 inline-flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
         <CheckCircle2 size={15} className="text-[#16A34A]" />
-        You&apos;re going to{" "}
+        You&apos;ve joined{" "}
         <span className="font-semibold text-[#164E63]">{joins.length}</span>{" "}
-        upcoming {joins.length === 1 ? "event" : "events"}
+        {joins.length === 1 ? "event" : "events"}
+        <span className="text-slate-400">· sorted by event date</span>
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, Loader2, ShieldCheck } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
-import {
-  getUpcomingEvents,
-  isEventOwner,
-  type EventRecord,
-} from "@/lib/events";
+import { CalendarPlus, ShieldCheck } from "lucide-react";
+import { getMyEvents, type EventRecord } from "@/lib/events";
 import ManageEventCard from "@/components/event/ManageEventCard";
 import { toast } from "@/components/ui/toast";
 
@@ -28,25 +23,24 @@ function CardSkeleton() {
 }
 
 export default function ManageEventPage() {
-  const { data: session, isPending } = useSession();
-  const email = session?.user?.email ?? "";
-
-  const [allEvents, setAllEvents] = useState<EventRecord[] | null>(null);
+  // The route scopes this list to the signed-in organiser, so no email is
+  // passed around and no other user's events can leak into the page.
+  const [myEvents, setMyEvents] = useState<EventRecord[] | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    getUpcomingEvents()
-      .then((data) => {
-        if (!cancelled) setAllEvents(data);
+    getMyEvents()
+      .then((events) => {
+        if (!cancelled) setMyEvents(events);
       })
       .catch(() => {
         if (cancelled) return;
-        setAllEvents([]);
+        setMyEvents([]);
         toast.add({
           type: "error",
-          title: "Couldn't load events",
+          title: "Couldn't load your events",
           description: "Please check your connection and try again.",
         });
       });
@@ -56,14 +50,12 @@ export default function ManageEventPage() {
     };
   }, [reloadKey]);
 
-  const reload = () => setReloadKey((key) => key + 1);
+  const reload = () => {
+    setMyEvents(null);
+    setReloadKey((key) => key + 1);
+  };
 
-  // Only the events this volunteer created can be edited or deleted.
-  const myEvents = (allEvents ?? []).filter((event) =>
-    isEventOwner(event, email),
-  );
-
-  const loading = isPending || (Boolean(email) && allEvents === null);
+  const loading = myEvents === null;
 
   return (
     <section className="min-h-screen bg-[#FBFAF6] py-10 sm:py-12 md:py-16">
@@ -146,13 +138,6 @@ export default function ManageEventPage() {
             </div>
           </>
         )}
-
-        {loading && allEvents === null ? (
-          <p className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
-            <Loader2 size={14} className="animate-spin" />
-            Loading your events…
-          </p>
-        ) : null}
       </div>
     </section>
   );

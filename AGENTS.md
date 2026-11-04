@@ -19,7 +19,9 @@
 
 - **Auth** is Better Auth + `@better-auth/mongo-adapter` (`src/lib/auth.ts`), mounted at `src/app/api/auth/[...all]/route.ts`. Users/sessions/accounts live in the `change-together` Mongo DB. Server code reads the session with `auth.api.getSession({ headers })`; client code uses `useSession` from `src/lib/auth-client.ts`. There is no session helper for components — the client hook is the only way.
 - **Events** live in a separate REST API behind `NEXT_PUBLIC_API_URL`. Every endpoint the app uses is wrapped in `src/lib/events.ts` (all `cache: "no-store"`). That backend is a different project and can simply be down; failures are expected and render as empty/error states.
-- `src/lib/mongodb.ts` is a **second, unrelated `MongoClient`** (cached on `globalThis`, `MONGODB_DB_NAME` default `change-together`). Only `/api/recent-events` uses it, reading the `create-event` collection directly and falling back to the REST API. `src/lib/auth.ts` builds its own client at module import time, so a missing `MONGODB_URI` throws as soon as anything imports `auth`.
+- **Reads fall back to Mongo.** `src/lib/events-server.ts` (server-only) looks events up in the `create-event` collection first, then the REST API, so `/events/[id]` and `/upcoming-events` keep working when the backend is offline. Server components use this module; client components use `src/lib/events.ts` (same-origin routes only).
+- **Joins live in MongoDB** (`event-joins`), owned by this app: `/api/events/[id]/join` (GET status + count, POST join, DELETE leave) and `/api/my-events`. Each row stores a snapshot of the user and the event; a unique `{eventId, "user.email"}` index enforces one join per user per event. The signed-in user always comes from the Better Auth session, never from the request body.
+- `src/lib/mongodb.ts` is a **second, unrelated `MongoClient`** (cached on `globalThis`, `MONGODB_DB_NAME` default `change-together`) used by `/api/recent-events` and everything in `events-server.ts`. `src/lib/auth.ts` builds its own client at module import time, so a missing `MONGODB_URI` throws as soon as anything imports `auth`.
 
 ## Auth and ownership gotchas
 

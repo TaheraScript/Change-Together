@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import { CalendarPlus } from "lucide-react";
 import UpcomingEventsList from "@/components/event/UpcomingEventsList";
 import CreatedEventToast from "@/components/event/CreatedEventToast";
-import { API_URL, isUpcoming, type EventRecord } from "@/lib/events";
+import type { EventRecord } from "@/lib/events";
+import { listUpcomingEvents } from "@/lib/events-server";
 
 export const metadata: Metadata = {
   title: "Upcoming Events | Change Together",
@@ -16,22 +17,12 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function UpcomingEventsPage() {
-  // Only events dated today or later belong on this page.
+  // Mongo first, REST fallback — undefined lets the list retry in the browser.
   let events: EventRecord[] | undefined;
 
   try {
-    const res = await fetch(`${API_URL}/upcoming-events`, {
-      cache: "no-store",
-    });
-
-    if (res.ok) {
-      const payload = (await res.json()) as EventRecord[];
-      events = payload
-        .filter((event) => isUpcoming(event.date))
-        .sort((a, b) => a.date.localeCompare(b.date));
-    }
+    events = await listUpcomingEvents();
   } catch {
-    // Leave `events` undefined so the list can retry in the browser.
     events = undefined;
   }
 

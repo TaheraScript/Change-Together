@@ -1,9 +1,8 @@
-import {auth} from "@/lib/auth"
 import type { Metadata } from "next";
 import EventDetails from "@/components/event/EventDetails";
 import EventMessage from "@/components/event/EventMessage";
-import { API_URL, type EventRecord } from "@/lib/events";
-import { headers } from "next/headers";
+import { getTokenFromServer } from "@/lib/getTokenFromServer";
+import { lookupEvent } from "@/lib/events-server";
 
 export const metadata: Metadata = {
   title: "Event Details | Change Together",
@@ -18,33 +17,11 @@ export default async function EventDetailsPage({
 }) {
   const { id } = await params;
 
-  let event: EventRecord | null = null;
-  let outcome: "ok" | "missing" | "error" = "ok";
- const token =await auth.api.getToken({
-  headers: await headers(),
+  // Public page: Mongo first so it renders without the external API.
+  // The token is only used for the REST fallback, and is null for guests.
+  const lookup = await lookupEvent(id, { token: await getTokenFromServer() });
 
-})
-console.log(token)
-  try {
-    const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
-      headers:{
-        authorization: `Bearer ${token.token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (res.status === 404 || res.status === 400) {
-      outcome = "missing";
-    } else if (!res.ok) {
-      outcome = "error";
-    } else {
-      event = await res.json();
-    }
-  } catch {
-    outcome = "error";
-  }
-
-  if (outcome === "missing") {
+  if (lookup.status === "missing") {
     return (
       <EventMessage
         title="Event not found"
@@ -53,7 +30,7 @@ console.log(token)
     );
   }
 
-  if (outcome === "error" || !event) {
+  if (lookup.status === "unavailable") {
     return (
       <EventMessage
         title="Couldn't load this event"
@@ -63,5 +40,5 @@ console.log(token)
     );
   }
 
-  return <EventDetails event={event} />;
+  return <EventDetails event={lookup.event} />;
 }
