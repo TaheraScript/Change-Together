@@ -64,7 +64,10 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
     try {
       const res = await fetch(`/api/events/${encodeURIComponent(event._id)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          authorization: 'user logged in',
+           "Content-Type": "application/json" ,
+          },
         body: JSON.stringify({
           title: values.title.trim(),
           description: values.description.trim(),

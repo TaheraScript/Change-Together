@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { CalendarPlus } from "lucide-react";
 import UpcomingEventsList from "@/components/event/UpcomingEventsList";
+import CreatedEventToast from "@/components/event/CreatedEventToast";
 import { API_URL, isUpcoming, type EventRecord } from "@/lib/events";
 
 export const metadata: Metadata = {
@@ -35,6 +37,9 @@ export default async function UpcomingEventsPage() {
 
   return (
     <section className="min-h-screen bg-[#FBFAF6] py-10 sm:py-12 md:py-16">
+      <Suspense fallback={null}>
+        <CreatedEventToast />
+      </Suspense>
       <div className="container mx-auto px-4 md:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between md:mb-10">
           <div className="max-w-xl">

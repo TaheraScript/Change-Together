@@ -1,7 +1,9 @@
+import {auth} from "@/lib/auth"
 import type { Metadata } from "next";
 import EventDetails from "@/components/event/EventDetails";
 import EventMessage from "@/components/event/EventMessage";
 import { API_URL, type EventRecord } from "@/lib/events";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Event Details | Change Together",
@@ -18,9 +20,16 @@ export default async function EventDetailsPage({
 
   let event: EventRecord | null = null;
   let outcome: "ok" | "missing" | "error" = "ok";
+ const token =await auth.api.getToken({
+  headers: await headers(),
 
+})
+console.log(token)
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
+      headers:{
+        authorization: `Bearer ${token.token}`,
+      },
       cache: "no-store",
     });
 

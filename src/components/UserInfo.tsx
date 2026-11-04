@@ -8,7 +8,7 @@ import {
   LayoutDashboard,
   LogIn,
   LogOut,
-  UserPlus,
+  Plus,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -80,34 +80,33 @@ export default function UserInfo() {
     );
   }
 
-  // Not logged in: show the Login and Register buttons.
+  // Not logged in: show the Login button only.
   if (!user) {
     return (
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        <Button
-          size="sm"
-          className="bg-[#164E63] text-white hover:bg-[#0e3a4b]"
-          render={<Link href="/login" />}
-        >
-          <LogIn />
-          <span>Login</span>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="hidden border-green-200 text-green-700 hover:bg-green-50 sm:inline-flex"
-          render={<Link href="/register" />}
-        >
-          <UserPlus />
-          <span>Register</span>
-        </Button>
-      </div>
+      <Button
+        size="sm"
+        className="bg-[#164E63] text-white hover:bg-[#0e3a4b]"
+        render={<Link href="/login" />}
+      >
+        <LogIn />
+        <span>Login</span>
+      </Button>
     );
   }
 
-  // Logged in: shadcn avatar (with hover name) as a dropdown + a Logout button.
+  // Logged in: create link + shadcn avatar (with hover name) as a dropdown
+  // + a Logout button, side by side.
   return (
     <div className="flex items-center gap-1.5 sm:gap-2">
+      <Link
+        href="/create-event"
+        aria-label="Create Event"
+        className="hidden items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100 sm:flex"
+      >
+        <Plus size={17} strokeWidth={2} />
+        <span className="hidden lg:inline">Create Event</span>
+      </Link>
+
       <TooltipProvider delay={150}>
         <DropdownMenu>
           <Tooltip>
@@ -171,10 +170,11 @@ export default function UserInfo() {
         variant="ghost"
         size="sm"
         onClick={handleLogout}
+        aria-label="Logout"
         className="text-slate-500 hover:bg-red-50 hover:text-red-600"
       >
         <LogOut />
-        <span className="hidden md:inline">Logout</span>
+        <span className="hidden sm:inline">Logout</span>
       </Button>
     </div>
   );

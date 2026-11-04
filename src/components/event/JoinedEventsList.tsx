@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  CalendarPlus,
-  CheckCircle2,
-  LogIn,
-  UserPlus,
-  XCircle,
-} from "lucide-react";
+import { CalendarPlus, CheckCircle2, XCircle } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import {
   getMyJoinedEvents,
@@ -32,14 +26,7 @@ function CardSkeleton() {
 
 export default function JoinedEventsList() {
   const { data: session } = useSession();
-  const user = session?.user
-    ? {
-        email: session.user.email,
-        displayName: session.user.name ?? "",
-        photoURL: session.user.image ?? undefined,
-      }
-    : null;
-  const email = user?.email ?? "";
+  const email = session?.user?.email ?? "";
 
   const [data, setData] = useState<{
     email: string;
@@ -77,39 +64,6 @@ export default function JoinedEventsList() {
   }, [email, reloadKey]);
 
   const joins = data?.email === email ? data.joins : null;
-
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-[#16A34A]">
-          <LogIn size={26} />
-        </span>
-        <h2 className="mt-4 text-2xl font-bold text-[#164E63]">
-          Log in to see your events
-        </h2>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-          Joined events are linked to your account. Log in to pick up where
-          you left off, or create an account to start joining drives.
-        </p>
-        <div className="mt-6 flex flex-col justify-center gap-2.5 sm:flex-row">
-          <Link
-            href="/login?next=/joined-events"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#164E63] px-5 text-sm font-semibold text-white shadow-md shadow-[#164E63]/20 transition hover:bg-[#0e3a4b]"
-          >
-            <LogIn size={17} />
-            Log in
-          </Link>
-          <Link
-            href="/register?next=/joined-events"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-green-300 hover:bg-green-50 hover:text-green-700"
-          >
-            <UserPlus size={17} />
-            Create account
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (

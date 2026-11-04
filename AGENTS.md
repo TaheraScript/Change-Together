@@ -2,10 +2,41 @@
 
 ## Commands
 
-- `npm run dev` — dev server (Turbopack) on http://localhost:3000
-- `npm run lint` — ESLint (flat config, `eslint-config-next` core-web-vitals + TS)
-- `npx tsc --noEmit` — typecheck (no dedicated script). Run `npm run dev` or `npm run build` first when route types are missing — tsconfig includes `.next/types/**/*.ts` and `.next/dev/types/**/*.ts`.
-- No tests exist; no CI or pre-commit hooks — `npm run lint`, then `npx tsc --noEmit`, then `npm run build` is the full local verification. `npm run build` is the closest thing to a test suite.
+- `npm run dev` — Turbopack dev server on http://localhost:3000.
+- `npx tsc --noEmit` — typecheck (no script). `tsconfig` pulls route types from `.next/types` and `.next/dev/types`, so run `npm run dev` or `npm run build` once on a fresh clone before typechecking.
+- `npm run build` — the closest thing to a test suite (no tests, no CI, no pre-commit hooks).
+- `npm run lint` — **exits 1 on a clean checkout**: committed scratch scripts `tmp-classes.js`, `tmp-cleanup-qa.js`, `tmp-css-check.js` (`no-require-imports`) and `src/components/ui/carousel.tsx` (`react-hooks/set-state-in-effect`) already fail; `RegisterForm.tsx` also warns about an unused `FormEvent`. Not regressions — don't hand-fix vendored `src/components/ui/*`.
+
+## Setup: env is not committed
+
+`.env*` is gitignored, so a fresh clone needs its own `.env`:
+
+- Required: `MONGODB_URI`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and `NEXT_PUBLIC_BETTER_AUTH_URL` (both `http://localhost:3000`), `NEXT_PUBLIC_API_URL` (events REST API, e.g. `http://localhost:5000`).
+- Optional GitHub OAuth: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — the provider is only registered when both exist (`src/lib/auth.ts`).
+- There is **no default** for `NEXT_PUBLIC_API_URL`: `src/lib/events.ts` falls back to `""` and every event call then throws the "events service isn't configured" `ApiError`.
+
+## Architecture: two backends, both external to the app code
+
+- **Auth** is Better Auth + `@better-auth/mongo-adapter` (`src/lib/auth.ts`), mounted at `src/app/api/auth/[...all]/route.ts`. Users/sessions/accounts live in the `change-together` Mongo DB. Server code reads the session with `auth.api.getSession({ headers })`; client code uses `useSession` from `src/lib/auth-client.ts`. There is no session helper for components — the client hook is the only way.
+- **Events** live in a separate REST API behind `NEXT_PUBLIC_API_URL`. Every endpoint the app uses is wrapped in `src/lib/events.ts` (all `cache: "no-store"`). That backend is a different project and can simply be down; failures are expected and render as empty/error states.
+- `src/lib/mongodb.ts` is a **second, unrelated `MongoClient`** (cached on `globalThis`, `MONGODB_DB_NAME` default `change-together`). Only `/api/recent-events` uses it, reading the `create-event` collection directly and falling back to the REST API. `src/lib/auth.ts` builds its own client at module import time, so a missing `MONGODB_URI` throws as soon as anything imports `auth`.
+
+## Auth and ownership gotchas
+
+- `src/proxy.ts` is Next 16's `middleware.ts` replacement (file name `proxy.ts`, exported function `proxy`). It is the **only** access gate: it redirects signed-out users from `/create-event`, `/manage-events`, `/joined-events` to `/login?next=…`, and new gated pages belong in its `config.matcher`. Don't create a `middleware.ts`, and don't add page-level session redirects — components there only read the session for data (`useSession`), because the proxy has already guaranteed one.
+- The external events API has **no notion of ownership**. `/api/events/[id]` PATCH/DELETE is a same-origin proxy that validates `auth.api.getSession`, compares `organizerEmail`, then whitelists editable fields. `updateEvent`/`deleteEvent` in `src/lib/events.ts` intentionally go through it — don't "simplify" them into direct external-API calls.
+- Client-side owner checks use `isEventOwner()` (lowercased `organizerEmail` vs session email). `CreateEventForm` sets `organizerEmail` from the session user.
+- `/events/[id]/edit` is not in the proxy matcher; the write is rejected server-side, so a non-owner sees the form but cannot save.
+
+## Stack quirks
+
+- Next.js 16 App Router under `src/app`; alias `@/*` → `src/*`. **`params` is a `Promise`** in pages and route handlers — `await params`.
+- Tailwind v4 CSS-first: no `tailwind.config`; theme, keyframes, and utilities live in `src/app/globals.css`. CSS is compiled by `@tailwindcss/turbopack` (inline rule in `next.config.ts`).
+- **Dark mode is hand-rolled.** No `next-themes`: `ThemeToggle` flips `.dark` on `<html>`, persists to `change-together:theme`, and `layout.tsx` injects a pre-paint script. Because components hardcode palette values (`#164E63` teal, `#16A34A` green, `#FBFAF6` cream, `bg-white`, `slate-*`), dark mode works through `.dark .bg-white { … }`-style overrides at the bottom of `globals.css`. A new color/background utility needs a matching `.dark` override or it stays light.
+- **React Compiler is enabled** (`reactCompiler: true` + `babel-plugin-react-compiler`). Don't add `useMemo`/`useCallback`/`React.memo` for performance.
+- `cacheComponents` and `partialPrefetching` are both off. Pages that must show new events are `export const dynamic = "force-dynamic"`.
+- UI is shadcn/ui, **base-nova style on `@base-ui/react`** (not Radix) — see `components.json`. Prebuilt primitives are in `src/components/ui`; add new ones with the `shadcn` CLI, not by hand. Note Base UI's `render={<Link />}` prop instead of Radix's `asChild`.
+- Images use plain `<img>` via `components/event/EventImage.tsx` (onError fallback + retry); there is no `next/image` `remotePatterns` config, so remote thumbnails would fail with `next/image`.
 
 ## This is NOT the Next.js you know
 
@@ -13,23 +44,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
-## Stack quirks
-
-- Next.js 16 App Router under `src/app`; alias `@/*` → `src/*`.
-- Tailwind v4 CSS-first: no `tailwind.config`; theme lives in `src/app/globals.css`. CSS is loaded through `@tailwindcss/turbopack` (configured inline in `next.config.ts`).
-- **React Compiler is enabled** (`reactCompiler: true` + `babel-plugin-react-compiler`). Don't hand-add `useMemo`/`useCallback`/`React.memo` "for performance" — the compiler handles it.
-- `cacheComponents` and `partialPrefetching` are both disabled in `next.config.ts`.
-- UI is shadcn/ui with the **base-nova style on `@base-ui/react`** (not Radix) — see `components.json`. Prebuilt primitives live in `src/components/ui`; add new ones with the `shadcn` CLI, not by hand.
-
-## Architecture: frontend-only, external API
-
-- This repo contains **no backend**. Event data comes from a separate REST API (default `http://localhost:5000`, override with `NEXT_PUBLIC_API_URL` in `.env.local` — no env files are committed). All endpoints used are in `src/lib/events.ts`; every call uses `cache: "no-store"`. It is not included in this repo and may just be down — fetch failures are expected and handled.
-- Known inconsistency: `src/app/events/[id]/page.tsx` (server component) hardcodes `http://localhost:5000` instead of using the `API_URL` from `src/lib/events.ts`. Keep both in sync if the backend URL changes.
-- Auth is **fully client-side** in `src/lib/auth.ts`: accounts + session live in `localStorage`, passwords are salted/SHA-256 hashed via Web Crypto, Google sign-in uses Google Identity Services when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set, otherwise falls back to a fake demo user. Don't try to read the session from a server component — `getServerUserSnapshot()` always returns `null`.
-- The README predates the REST API migration and wrongly says events are stored in localStorage; trust the code.
-- Legacy session keys: reads check `change-together:user`, `ct-user`, and `user` (in that order); writes only use `change-together:user`. Removing or reordering `SESSION_KEYS` breaks compat with old browser data.
-- Pattern for consuming auth state in components: `useSyncExternalStore(subscribeToUser, getUserSnapshot, getServerUserSnapshot)` (see `Navbar`, `JoinPanel`, etc.). `getUserSnapshot` caches on a localStorage key fingerprint — don't replace it with a plain read or React will throw "getSnapshot should be cached".
-
 ## Routes
 
-`/` (hero + gallery) · `/events/[id]` (details/join, has `loading.tsx`) · `/upcoming-events` · `/joined-events` (auth-gated) · `/create-event` (auth-gated) · `/login` · `/register`. Feature components are grouped in `src/components/{auth,event,home,shared}`; metadata is exported per page.
+Pages: `/` (Hero → Features → RecentEvents → Gallery → Newsletter) · `/events/[id]` (server-fetched, has `loading.tsx`) · `/events/[id]/edit` · `/upcoming-events` · `/joined-events` · `/create-event` · `/manage-events` (list of events you own, with edit/cancel) · `/login` · `/register`.
+
+Route handlers: `/api/auth/[...all]` (Better Auth) · `/api/events/[id]` (owner-checked PATCH/DELETE) · `/api/recent-events` (Mongo, REST fallback).
+
+Feature components are grouped in `src/components/{auth,event,home,shared}`; each page exports its own `metadata`.
+
+## Docs caveat
+
+`README.md` still describes Google sign-in — the code implements **GitHub** OAuth (`GithubButton.tsx`, `GITHUB_CLIENT_*`). Password rule enforced in the UI: ≥6 chars with an uppercase and a lowercase letter (server-side minimum is 6).

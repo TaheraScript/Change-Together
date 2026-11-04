@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlignLeft,
@@ -12,20 +11,18 @@ import {
   Image as ImageIcon,
   Loader2,
   Lock,
-  LogIn,
   MapPin,
   Send,
   Sparkles,
   Tag,
   Type,
-  UserPlus,
   XCircle,
 } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
+// FIX: authClient was missing, which caused a ReferenceError.
+import { authClient, useSession } from "@/lib/auth-client";
+// addEvent and ApiError are no longer used here, because the fetch lives in handleSubmit.
 import {
-  ApiError,
   EVENT_TYPES,
-  addEvent,
   toDateInputValue,
   type EventRecord,
 } from "@/lib/events";
@@ -156,10 +153,13 @@ export default function CreateEventForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // 1. Guard: ignore double clicks and re-submits after success.
     if (submitting || savedEvent) return;
 
     setStorageError("");
 
+    // 2. Validate BEFORE sending anything to the server.
     const nextErrors = validate();
     setErrors(nextErrors);
 
@@ -167,15 +167,15 @@ export default function CreateEventForm() {
       (key) => nextErrors[key as FieldName],
     );
     if (firstInvalid) {
-      document
-        .getElementById(firstInvalid)
-        ?.focus({ preventScroll: true });
+      document.getElementById(firstInvalid)?.focus({ preventScroll: true });
       document
         .getElementById(firstInvalid)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
+    // Not an access gate: src/proxy.ts already guarantees a session.
+    // This only covers a session that expired while the form was open.
     if (!user) {
       router.push("/login?next=/create-event");
       return;
@@ -183,16 +183,45 @@ export default function CreateEventForm() {
 
     setSubmitting(true);
     try {
-      const created = await addEvent({
-        title: values.title.trim(),
-        description: values.description.trim(),
-        type: values.type,
-        thumbnailUrl: values.thumbnailUrl.trim(),
-        location: values.location.trim(),
-        date: values.date,
-        organizerEmail: user.email,
-      });
-      setSavedEvent(created);
+      // 3. Your section, fixed: get a signed token for the logged-in user.
+      const { data, error } = await authClient.token();
+      const token = data?.token;
+      if (error || !token) {
+        throw new Error("Your session expired. Please log in again.");
+      }
+
+      // 4. POST to Express.
+      //    FIX: template literal so the env value is used (not literal text),
+      //    plus the correct spelling of "Content-Type" and "Authorization".
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/create-event`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // FIX: send trimmed values, not the raw `values` object.
+          // Express should use the email from the verified token and ignore this one.
+          body: JSON.stringify({
+            title: values.title.trim(),
+            description: values.description.trim(),
+            type: values.type,
+            thumbnailUrl: values.thumbnailUrl.trim(),
+            location: values.location.trim(),
+            date: values.date,
+            organizerEmail: user.email,
+          }),
+        },
+      );
+
+      // 5. Use the response. Express replies { insertedId, event }.
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.message ?? "We couldn't publish your event.");
+      }
+
+      setSavedEvent(body.event as EventRecord);
       setSubmitting(false);
       redirectTimer.current = setTimeout(() => {
         router.push("/upcoming-events?created=1");
@@ -200,54 +229,16 @@ export default function CreateEventForm() {
     } catch (error) {
       setSubmitting(false);
       setStorageError(
-        error instanceof ApiError
+        error instanceof Error
           ? error.message
           : "We couldn't publish your event. Please check your connection and try again.",
       );
     }
   };
 
-  const disabled = submitting || Boolean(savedEvent);
-
-  if (!user) {
-    return (
-      <div className="mx-auto w-full max-w-xl">
-        <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white px-6 py-9 text-center shadow-xl shadow-slate-900/5 sm:px-10 sm:py-11">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-[#16A34A]">
-            <LogIn size={26} />
-          </span>
-          <h1 className="mt-5 text-2xl font-bold leading-tight text-[#164E63] sm:text-3xl">
-            Log in to create an event
-          </h1>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-            Only signed-in volunteers can publish a drive. Log in to your
-            account, or create one in a few seconds.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
-            <Link
-              href="/login?next=/create-event"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#164E63] px-5 text-sm font-semibold text-white shadow-md shadow-[#164E63]/20 transition hover:bg-[#0e3a4b]"
-            >
-              <LogIn size={17} />
-              Log in
-            </Link>
-            <Link
-              href="/register?next=/create-event"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-green-300 hover:bg-green-50 hover:text-green-700"
-            >
-              <UserPlus size={17} />
-              Create account
-            </Link>
-          </div>
-
-          <p className="mt-5 text-xs text-slate-400">
-            Your email is attached to every event you publish.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Keep the button inert until the session resolves, so the submit handler
+  // can rely on `user.email` without a redirect of its own.
+  const disabled = submitting || Boolean(savedEvent) || !user;
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -587,7 +578,7 @@ export default function CreateEventForm() {
               Organizer email attached:
             </span>
             <span className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
-              {user.email}
+              {user?.email ?? "—"}
             </span>
           </div>
 

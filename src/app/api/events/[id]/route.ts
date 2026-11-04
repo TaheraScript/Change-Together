@@ -135,7 +135,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+         authorization: 'user logged in',
+        "Content-Type": "application/json" },
       body: JSON.stringify(update),
     });
 

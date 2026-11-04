@@ -1,0 +1,2 @@
+- Never delete files or remove the user's own code without confirming with them first. Confidence: 0.95
+- Wants the assistant to go ahead and implement/modify the code to satisfy the stated requirements, rather than just reviewing the project and reporting that it already complies. Confidence: 0.7

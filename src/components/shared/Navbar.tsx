@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import UserInfo from "@/components/UserInfo";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 
@@ -42,14 +42,6 @@ const Navbar = () => {
           >
             <CalendarClock size={18} strokeWidth={1.8} />
             <span className="hidden md:inline">Upcoming Events</span>
-          </Link>
-
-          <Link
-            href="/create-event"
-            className="hidden items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100 sm:flex"
-          >
-            <Plus size={17} strokeWidth={2} />
-            <span className="hidden lg:inline">Create Event</span>
           </Link>
 
           <ThemeToggle />

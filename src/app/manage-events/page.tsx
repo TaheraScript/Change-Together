@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, Loader2, LogIn, ShieldCheck } from "lucide-react";
+import { CalendarPlus, Loader2, ShieldCheck } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import {
   getUpcomingEvents,
@@ -97,26 +97,6 @@ export default function ManageEventPage() {
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
-          </div>
-        ) : !email ? (
-          <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-[#16A34A]">
-              <LogIn size={26} />
-            </span>
-            <h2 className="mt-4 text-xl font-bold text-[#164E63] sm:text-2xl">
-              Log in to manage your events
-            </h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-              Events are tied to the account that created them, so we need you
-              signed in before you can edit or cancel anything.
-            </p>
-            <Link
-              href="/login?next=/manage-events"
-              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#164E63] px-5 text-sm font-semibold text-white shadow-md shadow-[#164E63]/20 transition hover:bg-[#0e3a4b]"
-            >
-              <LogIn size={17} />
-              Log in
-            </Link>
           </div>
         ) : myEvents.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-green-200 bg-white/80 px-6 py-14 text-center">

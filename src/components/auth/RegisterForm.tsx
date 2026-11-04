@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -19,7 +18,7 @@ import {
 import { signUp } from "@/lib/auth-client";
 import { toast } from "@/components/ui/toast";
 import { checkPassword, isPasswordValid, isValidEmail } from "@/lib/utils";
-import GoogleButton from "@/components/auth/GithubButton";
+import GithubButton from "@/components/auth/GithubButton";
 
 type FormErrors = {
   name?: string;
@@ -421,7 +420,7 @@ export default function RegisterForm() {
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <GoogleButton
+        <GithubButton
           destination={destination}
           onError={(message) => setErrors({ form: message })}
         />

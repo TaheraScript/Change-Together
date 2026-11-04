@@ -19,7 +19,7 @@ import { signIn } from "@/lib/auth-client";
 
 import { toast } from "@/components/ui/toast";
 import { checkPassword, isPasswordValid, isValidEmail } from "@/lib/utils";
-import GoogleButton from "@/components/auth/GithubButton";
+import GithubButton from "@/components/auth/GithubButton";
 
 type FormErrors = {
   email?: string;
@@ -175,28 +175,12 @@ export default function LoginForm() {
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label
-              htmlFor="login-password"
-              className="block text-sm font-semibold text-slate-700"
-            >
-              Password
-            </label>
-            <button
-              type="button"
-              onClick={() =>
-                toast.add({
-                  type: "info",
-                  title: "Password reset",
-                  description:
-                    "Reset emails aren't connected yet. Write to volunteer@changetogether.org and we'll help you back in.",
-                })
-              }
-              className="text-xs font-semibold text-[#16A34A] transition hover:text-green-700 hover:underline"
-            >
-              Forgot password?
-            </button>
-          </div>
+          <label
+            htmlFor="login-password"
+            className="mb-1.5 block text-sm font-semibold text-slate-700"
+          >
+            Password
+          </label>
           <div className="group relative">
             <Lock size={17} className={iconBase} />
             <input
@@ -308,7 +292,7 @@ export default function LoginForm() {
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <GoogleButton
+        <GithubButton
           destination={destination}
           onError={(message) => setErrors({ form: message })}
         />
