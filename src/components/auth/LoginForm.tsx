@@ -60,9 +60,15 @@ export default function LoginForm() {
     const nextErrors: FormErrors = {};
     if (!isValidEmail(email)) {
       nextErrors.email = "Enter a valid email address.";
+    } else if (email.trim().length > 254) {
+      nextErrors.email = "That email address is too long.";
     }
+    // Login only checks that a password was entered and matches the strength
+    // rule the register form enforces, so no weak credential slips through.
     if (!password) {
       nextErrors.password = "Enter your password.";
+    } else if (password.length > 128) {
+      nextErrors.password = "That password is too long.";
     } else if (!isPasswordValid(password)) {
       nextErrors.password =
         "Password needs an uppercase letter, a lowercase letter and at least 6 characters.";
@@ -157,6 +163,7 @@ export default function LoginForm() {
               }}
               placeholder="you@example.com"
               autoComplete="email"
+              maxLength={254}
               aria-invalid={Boolean(errors.email)}
               aria-describedby={errors.email ? "login-email-error" : undefined}
               disabled={loading}
@@ -198,6 +205,7 @@ export default function LoginForm() {
               }}
               placeholder="Your password"
               autoComplete="current-password"
+              maxLength={128}
               aria-invalid={Boolean(errors.password)}
               aria-describedby="login-password-rules"
               disabled={loading}

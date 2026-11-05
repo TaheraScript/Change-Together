@@ -23,8 +23,10 @@ import { useSession } from "@/lib/auth-client";
 // Events are stored by this app's same-origin Mongo route, so creation keeps
 // working even when the external events API is offline.
 import {
+  EVENT_LIMITS,
   EVENT_TYPES,
   addEvent,
+  isValidEventImageUrl,
   toDateInputValue,
   type EventRecord,
 } from "@/lib/events";
@@ -118,6 +120,8 @@ export default function CreateEventForm() {
 
     if (values.title.trim().length < 5) {
       nextErrors.title = "Add a clear event title (at least 5 characters).";
+    } else if (values.title.trim().length > EVENT_LIMITS.title) {
+      nextErrors.title = `Keep the title to ${EVENT_LIMITS.title} characters or fewer.`;
     }
     if (!values.type) {
       nextErrors.type = "Select an event type.";
@@ -136,18 +140,18 @@ export default function CreateEventForm() {
     }
     if (values.location.trim().length < 3) {
       nextErrors.location = "Add a venue or area for the event.";
+    } else if (values.location.trim().length > EVENT_LIMITS.location) {
+      nextErrors.location = `Keep the location to ${EVENT_LIMITS.location} characters or fewer.`;
     }
-    if (
-      values.thumbnailUrl.trim() &&
-      !/^https?:\/\/.+/i.test(values.thumbnailUrl.trim()) &&
-      !values.thumbnailUrl.trim().startsWith("/")
-    ) {
+    if (!isValidEventImageUrl(values.thumbnailUrl)) {
       nextErrors.thumbnailUrl =
         "Use a valid link starting with http(s):// or an image path.";
     }
     if (values.description.trim().length < 20) {
       nextErrors.description =
         "Describe the event in at least 20 characters so volunteers know what to expect.";
+    } else if (values.description.trim().length > EVENT_LIMITS.description) {
+      nextErrors.description = `Keep the description to ${EVENT_LIMITS.description} characters or fewer.`;
     }
 
     return nextErrors;
@@ -282,6 +286,7 @@ export default function CreateEventForm() {
                 value={values.title}
                 onChange={update("title")}
                 placeholder="e.g. Winter Clothes Distribution — Mirpur 10, Dhaka"
+                maxLength={EVENT_LIMITS.title}
                 aria-invalid={Boolean(errors.title)}
                 aria-describedby={errors.title ? "title-error" : undefined}
                 autoComplete="off"
@@ -402,6 +407,7 @@ export default function CreateEventForm() {
                 value={values.location}
                 onChange={update("location")}
                 placeholder="e.g. Dhanmondi Lake, Road 8, Dhaka"
+                maxLength={EVENT_LIMITS.location}
                 aria-invalid={Boolean(errors.location)}
                 aria-describedby={
                   errors.location ? "location-error" : undefined
@@ -428,7 +434,8 @@ export default function CreateEventForm() {
               htmlFor="thumbnailUrl"
               className="mb-1.5 block text-sm font-semibold text-slate-700"
             >
-              Thumbnail Image URL <span className="text-[#F59E0B]">*</span>
+              Thumbnail Image URL{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
             </label>
             <div className="group relative">
               <ImageIcon size={17} className={iconBase} />
@@ -439,6 +446,7 @@ export default function CreateEventForm() {
                 value={values.thumbnailUrl}
                 onChange={update("thumbnailUrl")}
                 placeholder="https://images.example.com/event.jpg"
+                maxLength={EVENT_LIMITS.thumbnailUrl}
                 aria-invalid={Boolean(errors.thumbnailUrl)}
                 aria-describedby={
                   errors.thumbnailUrl ? "thumbnailUrl-error" : "thumbnail-hint"
@@ -516,7 +524,7 @@ export default function CreateEventForm() {
                 name="description"
                 value={values.description}
                 onChange={update("description")}
-                maxLength={700}
+                maxLength={EVENT_LIMITS.description}
                 rows={5}
                 placeholder="Explain the purpose of the drive, volunteers needed, items being distributed or tasks to complete…"
                 aria-invalid={Boolean(errors.description)}
@@ -529,7 +537,7 @@ export default function CreateEventForm() {
                 className={`min-h-32 w-full resize-y rounded-xl border bg-slate-50/70 py-3 pl-11 pr-3.5 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 ${inputState(Boolean(errors.description))} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
               />
               <span className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums text-slate-400">
-                {values.description.length}/700
+                {values.description.length}/{EVENT_LIMITS.description}
               </span>
             </div>
             {errors.description ? (

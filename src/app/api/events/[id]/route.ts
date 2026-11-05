@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getApiUser } from "@/lib/api-auth";
+import { auth } from "@/lib/auth";
 import {
+  EVENT_LIMITS,
   EVENT_TYPES,
+  isValidEventImageUrl,
   type EventRecord,
 } from "@/lib/events";
 import {
@@ -35,6 +38,20 @@ function isOwner(event: EventRecord, email: string): boolean {
 }
 
 /**
+ * Signs a short-lived JWT for the current session so the external events API
+ * can verify the caller against this app's public JWKS. Returns `null` when no
+ * session is present, which makes the API answer 401.
+ */
+async function sessionBearer(request: Request): Promise<string | null> {
+  try {
+    const { token } = await auth.api.getToken({ headers: request.headers });
+    return token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whitelists and validates the editable fields. Returns the update or an
  * error message; ownership (`organizerEmail`) and `_id` can never change.
  */
@@ -65,6 +82,14 @@ function parseUpdate(
     return { message: "Add a clear event title (at least 5 characters)." };
   }
   if (
+    update.title !== undefined &&
+    update.title.length > EVENT_LIMITS.title
+  ) {
+    return {
+      message: `The event title must be ${EVENT_LIMITS.title} characters or fewer.`,
+    };
+  }
+  if (
     update.type !== undefined &&
     !EVENT_TYPES.includes(update.type as (typeof EVENT_TYPES)[number])
   ) {
@@ -73,10 +98,35 @@ function parseUpdate(
   if (update.location !== undefined && update.location.length < 3) {
     return { message: "Add a venue or area for the event." };
   }
+  if (
+    update.location !== undefined &&
+    update.location.length > EVENT_LIMITS.location
+  ) {
+    return {
+      message: `The location must be ${EVENT_LIMITS.location} characters or fewer.`,
+    };
+  }
   if (update.description !== undefined && update.description.length < 20) {
     return {
       message:
         "Describe the event in at least 20 characters so volunteers know what to expect.",
+    };
+  }
+  if (
+    update.description !== undefined &&
+    update.description.length > EVENT_LIMITS.description
+  ) {
+    return {
+      message: `The description must be ${EVENT_LIMITS.description} characters or fewer.`,
+    };
+  }
+  if (
+    update.thumbnailUrl !== undefined &&
+    !isValidEventImageUrl(update.thumbnailUrl)
+  ) {
+    return {
+      message:
+        "Use a valid image link starting with http(s):// or an image path.",
     };
   }
   if (
@@ -184,11 +234,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
+  const token = await sessionBearer(request);
+
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: "PATCH",
       headers: {
-        authorization: "user logged in",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(parsed.update),
@@ -301,9 +353,12 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     );
   }
 
+  const token = await sessionBearer(request);
+
   try {
     const res = await fetch(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
     });
 
     if (!res.ok && res.status !== 204) {

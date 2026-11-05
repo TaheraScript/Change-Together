@@ -4,12 +4,19 @@ import {
   ArrowRight,
   CalendarDays,
   CalendarPlus,
+  CheckCircle2,
   Mail,
   MapPin,
   Tag,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { formatEventDate, isUpcoming, type EventRecord } from "@/lib/events";
+import {
+  formatEventDate,
+  getVolunteerActivities,
+  isUpcoming,
+  type EventRecord,
+} from "@/lib/events";
 import { EVENT_TYPE_ICONS } from "@/lib/event-icons";
 import EventImage from "./EventImage";
 import JoinPanel from "./JoinPanel";
@@ -44,6 +51,7 @@ export default function EventDetails({ event }: { event: EventRecord }) {
   const TypeIcon = EVENT_TYPE_ICONS[event.type] ?? CalendarDays;
   const hasEnded = !isUpcoming(event.date);
   const thumbnail = event.thumbnailUrl?.trim();
+  const activities = getVolunteerActivities(event.type);
 
   return (
     <section className="min-h-screen bg-[#FBFAF6] py-8 md:py-12">
@@ -102,6 +110,36 @@ export default function EventDetails({ event }: { event: EventRecord }) {
                 <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 sm:text-[15px]">
                   {event.description}
                 </p>
+              </div>
+
+              <div className="mt-6 border-t border-slate-100 pt-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    Volunteer activity
+                  </h2>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-green-700">
+                    <Users size={12} />
+                    Open to all volunteers
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Here&apos;s how volunteers will spend the day at this{" "}
+                  {event.type.toLowerCase()} drive.
+                </p>
+                <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                  {activities.map((activity) => (
+                    <li
+                      key={activity}
+                      className="flex items-start gap-2.5 rounded-xl border border-green-100 bg-green-50/60 px-3.5 py-2.5 text-sm text-slate-700"
+                    >
+                      <CheckCircle2
+                        size={16}
+                        className="mt-0.5 shrink-0 text-[#16A34A]"
+                      />
+                      {activity}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5">

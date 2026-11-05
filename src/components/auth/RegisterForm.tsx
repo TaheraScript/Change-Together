@@ -85,16 +85,26 @@ export default function RegisterForm() {
     const nextErrors: FormErrors = {};
     if (name.trim().length < 2) {
       nextErrors.name = "Please enter your full name.";
+    } else if (name.trim().length > 80) {
+      nextErrors.name = "Your name must be 80 characters or fewer.";
     }
     if (!isValidEmail(email)) {
       nextErrors.email = "Enter a valid email address.";
+    } else if (email.trim().length > 254) {
+      nextErrors.email = "That email address is too long.";
     }
-    if (photoURL.trim() && !/^https?:\/\/.+/i.test(photoURL.trim())) {
-      nextErrors.photoURL = "Photo URL must start with http:// or https://.";
+    if (photoURL.trim()) {
+      if (!/^https?:\/\/.+/i.test(photoURL.trim())) {
+        nextErrors.photoURL = "Photo URL must start with http:// or https://.";
+      } else if (photoURL.trim().length > 2048) {
+        nextErrors.photoURL = "That photo URL is too long.";
+      }
     }
     if (!isPasswordValid(password)) {
       nextErrors.password =
         "Password needs an uppercase letter, a lowercase letter and at least 6 characters.";
+    } else if (password.length > 128) {
+      nextErrors.password = "Your password must be 128 characters or fewer.";
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -188,6 +198,7 @@ export default function RegisterForm() {
               }}
               placeholder="Ayesha Rahman"
               autoComplete="name"
+              maxLength={80}
               aria-invalid={Boolean(errors.name)}
               aria-describedby={errors.name ? "register-name-error" : undefined}
               disabled={loading}
@@ -229,6 +240,7 @@ export default function RegisterForm() {
               }}
               placeholder="you@example.com"
               autoComplete="email"
+              maxLength={254}
               aria-invalid={Boolean(errors.email)}
               aria-describedby={
                 errors.email ? "register-email-error" : undefined
@@ -275,6 +287,7 @@ export default function RegisterForm() {
                 }}
                 placeholder="https://images.example.com/me.jpg"
                 autoComplete="photo"
+                maxLength={2048}
                 aria-invalid={Boolean(errors.photoURL)}
                 aria-describedby={
                   errors.photoURL
@@ -329,6 +342,7 @@ export default function RegisterForm() {
               }}
               placeholder="Create a strong password"
               autoComplete="new-password"
+              maxLength={128}
               aria-invalid={Boolean(errors.password)}
               aria-describedby="register-password-rules"
               disabled={loading}

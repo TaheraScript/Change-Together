@@ -14,7 +14,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { EVENT_TYPES, type EventRecord } from "@/lib/events";
+import { EVENT_LIMITS, EVENT_TYPES, isValidEventImageUrl, type EventRecord } from "@/lib/events";
 import { toast } from "@/components/ui/toast";
 import { Loader2, Pencil } from "lucide-react";
 
@@ -88,12 +88,20 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
 
     if (values.title.trim().length < 5) {
       next.title = "Add a clear event title (at least 5 characters).";
+    } else if (values.title.trim().length > EVENT_LIMITS.title) {
+      next.title = `Keep the title to ${EVENT_LIMITS.title} characters or fewer.`;
     }
     if (!values.type) {
       next.type = "Select an event type.";
+    } else if (
+      !EVENT_TYPES.includes(values.type as (typeof EVENT_TYPES)[number])
+    ) {
+      next.type = "Choose a valid event type.";
     }
     if (values.location.trim().length < 3) {
       next.location = "Add a venue or area for the event.";
+    } else if (values.location.trim().length > EVENT_LIMITS.location) {
+      next.location = `Keep the location to ${EVENT_LIMITS.location} characters or fewer.`;
     }
     if (!values.date) {
       next.date = "Pick a date for your event.";
@@ -103,22 +111,20 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
       today.setHours(0, 0, 0, 0);
       if (Number.isNaN(selected.getTime())) {
         next.date = "That date doesn't look right. Please pick again.";
-      } else if (selected <= today) {
+      } else if (values.date !== event.date && selected <= today) {
         next.date = "The event date must be in the future.";
       }
     }
     const thumbnail = values.thumbnailUrl.trim();
-    if (
-      thumbnail &&
-      !/^https?:\/\/.+/i.test(thumbnail) &&
-      !thumbnail.startsWith("/")
-    ) {
+    if (!isValidEventImageUrl(thumbnail)) {
       next.thumbnailUrl =
         "Use a valid link starting with http(s):// or an image path.";
     }
     if (values.description.trim().length < 20) {
       next.description =
         "Describe the event in at least 20 characters so volunteers know what to expect.";
+    } else if (values.description.trim().length > EVENT_LIMITS.description) {
+      next.description = `Keep the description to ${EVENT_LIMITS.description} characters or fewer.`;
     }
 
     return next;
@@ -219,6 +225,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
               name="title"
               value={values.title}
               onChange={update("title")}
+              maxLength={EVENT_LIMITS.title}
               aria-invalid={Boolean(errors.title)}
               className={fieldClass(Boolean(errors.title))}
             />
@@ -269,6 +276,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
               name="location"
               value={values.location}
               onChange={update("location")}
+              maxLength={EVENT_LIMITS.location}
               aria-invalid={Boolean(errors.location)}
               className={fieldClass(Boolean(errors.location))}
             />
@@ -314,6 +322,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
               name="thumbnailUrl"
               value={values.thumbnailUrl}
               onChange={update("thumbnailUrl")}
+              maxLength={EVENT_LIMITS.thumbnailUrl}
               aria-invalid={Boolean(errors.thumbnailUrl)}
               className={fieldClass(Boolean(errors.thumbnailUrl))}
             />
@@ -337,6 +346,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
               value={values.description}
               onChange={update("description")}
               rows={3}
+              maxLength={EVENT_LIMITS.description}
               aria-invalid={Boolean(errors.description)}
               className={`${fieldClass(Boolean(errors.description))} min-h-[80px] resize-y`}
             />

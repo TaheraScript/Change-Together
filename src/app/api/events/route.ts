@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getApiUser } from "@/lib/api-auth";
-import { EVENT_TYPES, toDateInputValue } from "@/lib/events";
+import {
+  EVENT_LIMITS,
+  EVENT_TYPES,
+  isValidEventImageUrl,
+  toDateInputValue,
+} from "@/lib/events";
 import { createEventInDb, findUpcomingInDb } from "@/lib/events-server";
 
 // Better Auth + Mongo both need Node.
@@ -62,13 +67,24 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (title.length > EVENT_LIMITS.title) {
+    return NextResponse.json(
+      {
+        message: `The event title must be ${EVENT_LIMITS.title} characters or fewer.`,
+      },
+      { status: 400 },
+    );
+  }
   if (!EVENT_TYPES.includes(type as (typeof EVENT_TYPES)[number])) {
     return NextResponse.json(
       { message: "Choose a valid event type." },
       { status: 400 },
     );
   }
-  if (!DATE_PATTERN.test(date) || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
+  if (
+    !DATE_PATTERN.test(date) ||
+    Number.isNaN(new Date(`${date}T00:00:00`).getTime())
+  ) {
     return NextResponse.json(
       { message: "Choose a valid event date." },
       { status: 400 },
@@ -86,11 +102,36 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (location.length > EVENT_LIMITS.location) {
+    return NextResponse.json(
+      {
+        message: `The location must be ${EVENT_LIMITS.location} characters or fewer.`,
+      },
+      { status: 400 },
+    );
+  }
+  if (!isValidEventImageUrl(thumbnailUrl)) {
+    return NextResponse.json(
+      {
+        message:
+          "Use a valid image link starting with http(s):// or an image path.",
+      },
+      { status: 400 },
+    );
+  }
   if (description.length < 20) {
     return NextResponse.json(
       {
         message:
           "Describe the event in at least 20 characters so volunteers know what to expect.",
+      },
+      { status: 400 },
+    );
+  }
+  if (description.length > EVENT_LIMITS.description) {
+    return NextResponse.json(
+      {
+        message: `The description must be ${EVENT_LIMITS.description} characters or fewer.`,
       },
       { status: 400 },
     );

@@ -11,6 +11,92 @@ export const EVENT_TYPES = [
 
 export type EventType = (typeof EVENT_TYPES)[number];
 
+/** Shared limits so the forms and the API reject the same values. */
+export const EVENT_LIMITS = {
+  title: 120,
+  location: 160,
+  description: 700,
+  thumbnailUrl: 2048,
+} as const;
+
+/**
+ * Accepts an absolute http(s) URL or a path in this app (`/images/...`).
+ * An empty value is allowed: the thumbnail is optional.
+ */
+export function isValidEventImageUrl(value: string): boolean {
+  const url = value.trim();
+  if (!url) return true;
+  if (url.length > EVENT_LIMITS.thumbnailUrl) return false;
+  return /^https?:\/\/.+/i.test(url) || url.startsWith("/");
+}
+
+/**
+ * What volunteers typically do at each kind of drive. The create form does
+ * not collect this, so the details page derives a useful task list from the
+ * event type instead of leaving the section empty.
+ */
+export const EVENT_VOLUNTEER_ACTIVITIES: Record<string, string[]> = {
+  Cleanup: [
+    "Join the on-ground clean-up crew",
+    "Sort and bag the collected waste",
+    "Hand out gloves, bags and safety gear",
+    "Support the water and refreshment point",
+  ],
+  Plantation: [
+    "Dig and prepare the planting pits",
+    "Plant and water the new saplings",
+    "Set up tree guards and labels",
+    "Guide first-time volunteers",
+  ],
+  Donation: [
+    "Receive and sort donated items",
+    "Pack donation kits for families",
+    "Keep the distribution queue moving",
+    "Help recipients carry items home",
+  ],
+  "Winter Relief": [
+    "Pack blankets and warm clothes",
+    "Check sizes and clothing quality",
+    "Distribute kits door to door",
+    "Record recipient details",
+  ],
+  "Food Drive": [
+    "Pack food parcels",
+    "Serve hot meals",
+    "Manage the serving line",
+    "Clean up after distribution",
+  ],
+  "Health Camp": [
+    "Welcome and register patients",
+    "Guide visitors to the right counter",
+    "Assist doctors and nurses",
+    "Help with record keeping",
+  ],
+  Education: [
+    "Run a reading or study circle",
+    "Distribute books and stationery",
+    "Support children with classwork",
+    "Organise learning materials",
+  ],
+  "Community Support": [
+    "Set up the venue and registration desk",
+    "Welcome and register attendees",
+    "Help with logistics and refreshments",
+    "Pack up after the event",
+  ],
+};
+
+const DEFAULT_VOLUNTEER_ACTIVITIES = [
+  "Help set up the event",
+  "Welcome and guide attendees",
+  "Support the organiser with on-ground tasks",
+  "Pack up after the event",
+];
+
+export function getVolunteerActivities(type: string): string[] {
+  return EVENT_VOLUNTEER_ACTIVITIES[type] ?? DEFAULT_VOLUNTEER_ACTIVITIES;
+}
+
 export type EventRecord = {
   _id: string;
   title: string;

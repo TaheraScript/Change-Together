@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Plus,
+  UserRound,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -150,6 +151,10 @@ export default function UserInfo() {
               ) : null}
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/profile" />}>
+              <UserRound />
+              Profile
+            </DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/create-event" />}>
               <CalendarPlus />
               Create Event
