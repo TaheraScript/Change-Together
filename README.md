@@ -102,22 +102,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 **Route Protection:** Private routes are protected through the authentication middleware in `src/proxy.ts`.
 
-## 📁 Project Structure
-
-```text
-src/
-├── app/           # App Router pages, layouts and API routes
-├── components/    # Reusable UI and feature components
-│   ├── auth/
-│   ├── event/
-│   ├── home/
-│   ├── profile/
-│   ├── shared/
-│   └── ui/
-├── lib/           # Authentication, MongoDB and event data helpers
-└── proxy.ts       # Authentication-based route protection
-```
-
 ## 🔐 Additional Notes
 
 - **Data Fallback:** Events are fetched from MongoDB first, with the external events REST API used as a fallback to maintain event availability when the primary backend is unavailable.
