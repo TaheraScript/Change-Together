@@ -17,7 +17,7 @@ export default function Loading() {
               key={index}
               className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
             >
-              <div className="aspect-[16/10] animate-pulse bg-slate-100" />
+              <div className="aspect-16/10 animate-pulse bg-slate-100" />
               <div className="space-y-3 p-5">
                 <div className="h-3 w-24 animate-pulse rounded-full bg-slate-100" />
                 <div className="h-5 w-3/4 animate-pulse rounded-full bg-slate-100" />

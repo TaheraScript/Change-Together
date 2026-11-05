@@ -17,8 +17,6 @@ export default async function EventDetailsPage({
 }) {
   const { id } = await params;
 
-  // Public page: Mongo first so it renders without the external API.
-  // The token is only used for the REST fallback, and is null for guests.
   const lookup = await lookupEvent(id, { token: await getTokenFromServer() });
 
   if (lookup.status === "missing") {

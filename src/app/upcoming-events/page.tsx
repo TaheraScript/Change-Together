@@ -13,11 +13,9 @@ export const metadata: Metadata = {
     "Discover community clean-ups, plantation drives and donation events happening soon.",
 };
 
-// Always re-read the calendar so newly created events appear immediately.
 export const dynamic = "force-dynamic";
 
 export default async function UpcomingEventsPage() {
-  // Mongo first, REST fallback — undefined lets the list retry in the browser.
   let events: EventRecord[] | undefined;
 
   try {

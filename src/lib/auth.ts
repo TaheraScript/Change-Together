@@ -11,7 +11,6 @@ const isGithubConfigured = Boolean(
   process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
 );
 
-// Mirrors the rule enforced by the register form in the UI.
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z]).{6,128}$/;
 
 export const auth = betterAuth({
@@ -36,9 +35,6 @@ export const auth = betterAuth({
     : {}),
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      // Email/password sign-up: enforce the same rules server-side, so the
-      // form can't be bypassed by calling the auth API directly. GitHub
-      // sign-ups have no password body and are left alone.
       if (ctx.path !== "/sign-up/email") return;
 
       const body = (ctx.body ?? {}) as {
@@ -68,9 +64,7 @@ export const auth = betterAuth({
     }),
   },
   plugins: [jwt()],
-  // No cookie cache: a profile update must be visible on the very next
-  // session read (navbar, profile page, protected APIs) instead of waiting
-  // for a cached user snapshot to expire.
+
   session: {
     cookieCache: {
       enabled: false,

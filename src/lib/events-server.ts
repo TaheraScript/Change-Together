@@ -10,18 +10,11 @@ import {
   type EventRecord,
 } from "./events";
 
-/*
- * Server-only helpers for the two Mongo-backed flows: reading events and
- * persisting joins. Route handlers and server components import this file;
- * client components must use `src/lib/events.ts` instead (same-origin routes).
- */
-
 export const EVENTS_COLLECTION = "create-event";
 export const JOINS_COLLECTION = "event-joins";
 
 const JOIN_INDEX_NAME = "unique_event_user";
 
-/** Both collections are schemaless; fields are validated while normalizing. */
 type StoredDoc = { _id: string | ObjectId; [key: string]: unknown };
 
 function toText(value: unknown): string {
@@ -34,7 +27,6 @@ function toDateString(value: unknown): string {
   return "";
 }
 
-/** Mongo documents and REST responses share one shape after this. */
 export function normalizeEvent(doc: Record<string, unknown>): EventRecord {
   return {
     _id: String(doc._id ?? ""),
@@ -55,7 +47,6 @@ export function normalizeEvent(doc: Record<string, unknown>): EventRecord {
   };
 }
 
-/** Stored ids are strings today, but old documents may use ObjectIds. */
 function idFilter(id: string) {
   const candidates: (string | ObjectId)[] = [id];
   if (ObjectId.isValid(id)) candidates.push(new ObjectId(id));
@@ -75,7 +66,6 @@ async function findEventInDb(id: string): Promise<EventRecord | null> {
   }
 }
 
-/** Mongo-only lookup used by the owner-checked write routes. */
 export function findEventInMongo(id: string): Promise<EventRecord | null> {
   return findEventInDb(id);
 }
@@ -85,13 +75,6 @@ export type EventLookup =
   | { status: "missing" }
   | { status: "unavailable" };
 
-/**
- * Mongo first (works without the external service), REST API second.
- * `missing` means neither source knows this id.
- *
- * `token` is an optional Better Auth JWT for deployments whose events API
- * requires one; guests simply fall through to Mongo and an anonymous fetch.
- */
 export async function lookupEvent(
   id: string,
   options: { token?: string | null } = {},
@@ -119,7 +102,6 @@ export async function lookupEvent(
   }
 }
 
-/** Upcoming events straight from Mongo; empty when the DB is unreachable. */
 export async function findUpcomingInDb(limit?: number): Promise<EventRecord[]> {
   const db = await getDb();
   const today = toDateInputValue(new Date());
@@ -140,7 +122,6 @@ export async function findUpcomingInDb(limit?: number): Promise<EventRecord[]> {
   return docs.map((doc) => normalizeEvent(doc as Record<string, unknown>));
 }
 
-/** Mongo first, REST API fallback -- same order as `/api/recent-events`. */
 export async function listUpcomingEvents(): Promise<EventRecord[]> {
   try {
     const events = await findUpcomingInDb();
@@ -155,11 +136,6 @@ export async function listUpcomingEvents(): Promise<EventRecord[]> {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/* ------------------------------------------------------------------ */
-/* Event CRUD (the Next app owns these writes when the API is offline) */
-/* ------------------------------------------------------------------ */
-
-/** Fields a volunteer may change; ownership and `_id` never are. */
 export const EDITABLE_EVENT_FIELDS = [
   "title",
   "description",
@@ -173,7 +149,6 @@ export type EventUpdate = Partial<
   Record<(typeof EDITABLE_EVENT_FIELDS)[number], string>
 >;
 
-/** Only the editable string fields of an update, trimmed. */
 function toStoredUpdate(update: EventUpdate): Record<string, string> {
   const result: Record<string, string> = {};
   for (const field of EDITABLE_EVENT_FIELDS) {
@@ -183,7 +158,6 @@ function toStoredUpdate(update: EventUpdate): Record<string, string> {
   return result;
 }
 
-/** Creates an event in `create-event` and returns the stored record. */
 export async function createEventInDb(
   input: CreateEventInput,
 ): Promise<EventRecord> {
@@ -204,10 +178,6 @@ export async function createEventInDb(
   return normalizeEvent(document);
 }
 
-/**
- * Updates whitelisted fields; returns `null` when the event is not in Mongo.
- * The caller is responsible for the ownership check.
- */
 export async function updateEventInDb(
   id: string,
   update: EventUpdate,
@@ -224,10 +194,6 @@ export async function updateEventInDb(
   return findEventInDb(id);
 }
 
-/**
- * Deletes an event and every join pointing at it, so the joined list never
- * keeps a dangling snapshot. Returns false when the event is not in Mongo.
- */
 export async function deleteEventInDb(id: string): Promise<boolean> {
   const db = await getDb();
   const result = await db
@@ -240,7 +206,6 @@ export async function deleteEventInDb(id: string): Promise<boolean> {
   return true;
 }
 
-/** Every event created by this email, earliest event date first. */
 export async function listEventsByOrganizer(
   email: string,
 ): Promise<EventRecord[]> {
@@ -271,21 +236,18 @@ export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/*
- * The unique index is what guarantees "one join per user per event"; it also
- * covers concurrent clicks. Existing databases already have it, so this is a
- * no-op there and a safety net on a fresh one.
- */
 let joinIndexPromise: Promise<unknown> | null = null;
 
 function ensureJoinIndex(): Promise<unknown> {
   if (!joinIndexPromise) {
     joinIndexPromise = getDb()
       .then((db) =>
-        db.collection<StoredDoc>(JOINS_COLLECTION).createIndex(
-          { eventId: 1, "user.email": 1 },
-          { unique: true, name: JOIN_INDEX_NAME },
-        ),
+        db
+          .collection<StoredDoc>(JOINS_COLLECTION)
+          .createIndex(
+            { eventId: 1, "user.email": 1 },
+            { unique: true, name: JOIN_INDEX_NAME },
+          ),
       )
       .catch((error) => {
         joinIndexPromise = null;
@@ -311,9 +273,7 @@ export async function findJoin(
 
   if (!doc) return null;
   return {
-    event: normalizeEvent(
-      (doc.event ?? {}) as Record<string, unknown>,
-    ),
+    event: normalizeEvent((doc.event ?? {}) as Record<string, unknown>),
     joinedAt: String(doc.joinedAt ?? ""),
   };
 }
@@ -326,10 +286,6 @@ function isDuplicateKeyError(error: unknown): boolean {
   );
 }
 
-/**
- * Stores the join with a snapshot of both the user and the event, matching
- * the document shape the existing `event-joins` collection already uses.
- */
 export async function joinEventInDb(
   event: EventRecord,
   user: JoinUserRecord,
@@ -370,14 +326,12 @@ export async function joinEventInDb(
   try {
     await collection.insertOne(document);
   } catch (error) {
-    // A concurrent request won the race: treat it as already joined.
     if (!isDuplicateKeyError(error)) throw error;
   }
 
   return { joinedAt: document.joinedAt, created: true };
 }
 
-/** Removes the join row; returns false when the user had not joined. */
 export async function leaveEventInDb(
   eventId: string,
   email: string,
@@ -390,10 +344,7 @@ export async function leaveEventInDb(
   return result.deletedCount > 0;
 }
 
-/** Every event this email has joined, earliest event date first. */
-export async function listJoinsByEmail(
-  email: string,
-): Promise<JoinRecord[]> {
+export async function listJoinsByEmail(email: string): Promise<JoinRecord[]> {
   const db = await getDb();
   const docs = await db
     .collection<StoredDoc>(JOINS_COLLECTION)

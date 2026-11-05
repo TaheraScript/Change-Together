@@ -4,7 +4,7 @@ export default function Loading() {
       <div className="container mx-auto px-4 md:px-8">
         <div className="mx-auto w-full max-w-3xl">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="space-y-3 border-b border-slate-100 bg-gradient-to-br from-green-50/70 via-white to-white px-6 py-7 sm:px-9 sm:py-9">
+            <div className="space-y-3 border-b border-slate-100 bg-linear-to-br from-green-50/70 via-white to-white px-6 py-7 sm:px-9 sm:py-9">
               <div className="h-3 w-32 animate-pulse rounded-full bg-slate-100" />
               <div className="h-9 w-72 max-w-full animate-pulse rounded-full bg-slate-100" />
               <div className="h-4 w-full max-w-md animate-pulse rounded-full bg-slate-100" />

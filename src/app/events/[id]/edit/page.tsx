@@ -5,8 +5,7 @@ import { ApiError, getEvent, type EventRecord } from "@/lib/events";
 
 export const metadata: Metadata = {
   title: "Edit Event | Change Together",
-  description:
-    "Update the details of a community event you organised.",
+  description: "Update the details of a community event you organised.",
 };
 
 export default async function EditEventPage({

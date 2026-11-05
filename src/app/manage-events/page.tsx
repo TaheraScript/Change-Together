@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/toast";
 function CardSkeleton() {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="aspect-[16/10] animate-pulse bg-slate-100" />
+      <div className="aspect-16/10 animate-pulse bg-slate-100" />
       <div className="space-y-3 p-5">
         <div className="h-3 w-24 animate-pulse rounded-full bg-slate-100" />
         <div className="h-5 w-3/4 animate-pulse rounded-full bg-slate-100" />
@@ -23,8 +23,7 @@ function CardSkeleton() {
 }
 
 export default function ManageEventPage() {
-  // The route scopes this list to the signed-in organiser, so no email is
-  // passed around and no other user's events can leak into the page.
+  
   const [myEvents, setMyEvents] = useState<EventRecord[] | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 

@@ -16,8 +16,7 @@ export default function RegisterPage() {
       badge="Join the movement"
       title={
         <>
-          Create your{" "}
-          <span className="text-[#16A34A]">Volunteer account.</span>
+          Create your <span className="text-[#16A34A]">Volunteer account.</span>
         </>
       }
       subtitle="One account to join drives, publish events and keep every action you take in one place."
