@@ -8,7 +8,7 @@ Change Together is a community-service event platform that connects people with 
 
 ## 📸 Project Screenshot
 
-![Change Together Screenshot](./public/images/change-together.vercel.app_.png)
+![Change Together Screenshot](./public/images/change-together-screenshot.png)
 
 ## ✨ Key Features
 
