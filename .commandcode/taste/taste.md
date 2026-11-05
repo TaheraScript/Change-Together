@@ -1,2 +1,5 @@
 - Never delete files or remove the user's own code without confirming with them first. Confidence: 0.95
 - Wants the assistant to go ahead and implement/modify the code to satisfy the stated requirements, rather than just reviewing the project and reporting that it already complies. Confidence: 0.7
+- Wants proposed modifications to be surfaced and explicitly approved before the assistant implements them — check requirements step by step and ask first, then implement only after approval. Confidence: 0.7
+- When edits must be applied outside the assistant's workspace, wants the complete file code returned (copy-paste ready) rather than a diff or partial snippet. Confidence: 0.6
+- Prefers discrete UI concerns to live in their own dedicated component files: when a feature (e.g. delete) is inlined in a parent, extract it into the existing component file and have the parent render that component, rather than leaving unused components as dead code or inlining the logic. Confidence: 0.6
