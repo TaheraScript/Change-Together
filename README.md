@@ -5,9 +5,10 @@
 Change Together is a community-service event platform that connects people with local volunteering opportunities and community initiatives. Users can discover upcoming events, participate in meaningful activities, and organize their own community drives, including clean-up campaigns, tree plantations, donation drives, food distribution, health camps, and educational sessions.
 
 🔗 **Live Demo:** [Change Together](https://change-together.vercel.app/)
+
 ## 📸 Project Screenshot
 
-![Change Together Screenshot](change-together.vercel.app_.png)
+![Change Together Screenshot](./public/images/change-together.vercel.app_.png)
 
 ## ✨ Key Features
 
