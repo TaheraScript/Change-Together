@@ -116,7 +116,9 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
       }
     }
     const thumbnail = values.thumbnailUrl.trim();
-    if (!isValidEventImageUrl(thumbnail)) {
+    if (!thumbnail) {
+      next.thumbnailUrl = "Add a thumbnail image URL for your event.";
+    } else if (!isValidEventImageUrl(thumbnail)) {
       next.thumbnailUrl =
         "Use a valid link starting with http(s):// or an image path.";
     }
@@ -315,7 +317,7 @@ export default function EditEventForm({ event, onUpdated }: EditEventFormProps) 
               htmlFor={`edit-${event._id}-thumbnailUrl`}
               className="mb-1 block text-xs font-medium text-slate-700"
             >
-              Thumbnail URL
+              Thumbnail URL <span className="text-[#F59E0B]">*</span>
             </label>
             <input
               id={`edit-${event._id}-thumbnailUrl`}

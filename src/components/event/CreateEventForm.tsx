@@ -143,7 +143,9 @@ export default function CreateEventForm() {
     } else if (values.location.trim().length > EVENT_LIMITS.location) {
       nextErrors.location = `Keep the location to ${EVENT_LIMITS.location} characters or fewer.`;
     }
-    if (!isValidEventImageUrl(values.thumbnailUrl)) {
+    if (!values.thumbnailUrl.trim()) {
+      nextErrors.thumbnailUrl = "Add a thumbnail image URL for your event.";
+    } else if (!isValidEventImageUrl(values.thumbnailUrl)) {
       nextErrors.thumbnailUrl =
         "Use a valid link starting with http(s):// or an image path.";
     }
@@ -434,8 +436,7 @@ export default function CreateEventForm() {
               htmlFor="thumbnailUrl"
               className="mb-1.5 block text-sm font-semibold text-slate-700"
             >
-              Thumbnail Image URL{" "}
-              <span className="font-normal text-slate-400">(optional)</span>
+              Thumbnail Image URL <span className="text-[#F59E0B]">*</span>
             </label>
             <div className="group relative">
               <ImageIcon size={17} className={iconBase} />
@@ -466,7 +467,7 @@ export default function CreateEventForm() {
               </p>
             ) : (
               <p id="thumbnail-hint" className="mt-1.5 text-xs text-slate-400">
-                Optional image URL, or pick one of the ready-made photos below.
+                Paste an image URL, or pick one of the ready-made photos below.
               </p>
             )}
 

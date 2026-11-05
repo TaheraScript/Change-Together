@@ -90,9 +90,9 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (date < toDateInputValue(new Date())) {
+  if (date <= toDateInputValue(new Date())) {
     return NextResponse.json(
-      { message: "The event date must be today or later." },
+      { message: "The event date must be in the future." },
       { status: 400 },
     );
   }
@@ -107,6 +107,12 @@ export async function POST(request: Request) {
       {
         message: `The location must be ${EVENT_LIMITS.location} characters or fewer.`,
       },
+      { status: 400 },
+    );
+  }
+  if (!thumbnailUrl) {
+    return NextResponse.json(
+      { message: "Add a thumbnail image URL for your event." },
       { status: 400 },
     );
   }

@@ -120,6 +120,9 @@ function parseUpdate(
       message: `The description must be ${EVENT_LIMITS.description} characters or fewer.`,
     };
   }
+  if (update.thumbnailUrl !== undefined && !update.thumbnailUrl) {
+    return { message: "Add a thumbnail image URL for your event." };
+  }
   if (
     update.thumbnailUrl !== undefined &&
     !isValidEventImageUrl(update.thumbnailUrl)

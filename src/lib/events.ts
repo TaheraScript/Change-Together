@@ -21,11 +21,11 @@ export const EVENT_LIMITS = {
 
 /**
  * Accepts an absolute http(s) URL or a path in this app (`/images/...`).
- * An empty value is allowed: the thumbnail is optional.
+ * Every event needs a thumbnail, so an empty value is rejected.
  */
 export function isValidEventImageUrl(value: string): boolean {
   const url = value.trim();
-  if (!url) return true;
+  if (!url) return false;
   if (url.length > EVENT_LIMITS.thumbnailUrl) return false;
   return /^https?:\/\/.+/i.test(url) || url.startsWith("/");
 }
